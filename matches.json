@@ -1,0 +1,27 @@
+[
+  {
+    "match_id": "ucl-2026-001",
+    "date": "2026-10-28",
+    "home_team": "Real Madrid",
+    "away_team": "Manchester City",
+    "competition": "Champions League",
+    "home_goals": null,
+    "away_goals": null,
+    "stats": {
+      "home": {
+        "xg": null,
+        "shots": null,
+        "shots_on_target": null,
+        "possession": null,
+        "pass_accuracy": null
+      },
+      "away": {
+        "xg": null,
+        "shots": null,
+        "shots_on_target": null,
+        "possession": null,
+        "pass_accuracy": null
+      }
+    }
+  }
+]
