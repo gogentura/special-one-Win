@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Special One Win — Футбольные Прогнозы</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-black tracking-wider text-emerald-400 mb-2">SPECIAL ONE WIN</h1>
+            <p class="text-slate-400">Независимая аналитическая система футбольного прогнозирования</p>
+        </header>
+
+        <main id="matches-container" class="space-y-6">
+            <!-- Сюда динамически загрузятся матчи -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-4 text-sm text-slate-400 border-b border-slate-700 pb-2">
+                    <span class="font-semibold text-emerald-400">Champions League</span>
+                    <span>2026-10-28</span>
+                </div>
+                
+                <div class="flex justify-between items-center mb-6">
+                    <div class="text-center w-5/12">
+                        <h2 class="text-xl font-bold">Real Madrid</h2>
+                        <span class="text-xs text-slate-400">Хозяева</span>
+                    </div>
+                    <div class="text-2xl font-black text-slate-500">VS</div>
+                    <div class="text-center w-5/12">
+                        <h2 class="text-xl font-bold">Manchester City</h2>
+                        <span class="text-xs text-slate-400">Гости</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/60 rounded-xl p-4 mb-4 grid grid-cols-2 gap-4 text-center">
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">Модель A (Базовая)</div>
+                        <div class="text-lg font-bold text-blue-400">1 : 1</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-slate-400 mb-1">Модель B (Special One)</div>
+                        <div class="text-lg font-bold text-emerald-400">2 : 1</div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
