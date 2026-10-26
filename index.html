@@ -1,63 +1,311 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Special One Win (SOW-X) — Тактическая панель</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style>
-        body {
-            background-color: #022c22;
-            color: #f8fafc;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        .board-card {
-            background: rgba(6, 78, 59, 0.4);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-            backdrop-filter: blur(10px);
-        }
-    </style>
-</head>
-<body class="min-h-screen p-4 md:p-8">
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f2e20">
+<title>FIELD-X · Тренерская доска</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f2e20;--p:#16402c;--ln:#3b7556;--tx:#f1f5ea;--mu:#9cc2ad;--ac:#f4d35e;--h:#6cc4ff;--a:#ff9159;--hd:Oswald,Impact,sans-serif}
+*{box-sizing:border-box;margin:0}
+body{background:repeating-linear-gradient(90deg,#0f2e20 0 70px,#113424 70px 140px);color:var(--tx);font:16px/1.45 "Source Sans 3",system-ui,sans-serif;min-height:100vh;padding:env(safe-area-inset-top) 0 calc(100px + env(safe-area-inset-bottom))}
+main{max-width:940px;margin:0 auto;padding:16px}
+h1{font:700 26px var(--hd);letter-spacing:.5px}h1 b{color:var(--ac);font-weight:700}
+h2{font:500 18px var(--hd);margin:20px 0 8px}
+.sub{color:var(--mu);font-size:14px}
+.tab{display:none}.tab.on{display:block}
+.card{background:var(--p);border:2px solid var(--ln);border-radius:6px 18px 6px 18px;padding:14px;margin-bottom:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}.row>*{flex:1;min-width:104px}
+input,select,textarea{background:#0b2418;border:1px solid var(--ln);color:var(--tx);border-radius:8px;padding:10px;font:inherit;width:100%}
+.b{background:var(--ac);color:#1d2a10;font:700 15px var(--hd);border:0;border-radius:8px;padding:11px;cursor:pointer;letter-spacing:.5px}.b.g{background:#1d4d37;color:var(--tx);border:1px solid var(--ln)}
+:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+.k{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}.k div{background:#0b2418;border-radius:8px;padding:10px 4px;text-align:center}.k b{display:block;font:700 24px var(--hd)}.k span{font-size:13px;color:var(--mu)}
+.pb{display:flex;height:38px;border-radius:8px;overflow:hidden;font:700 15px var(--hd)}.pb div{display:flex;align-items:center;justify-content:center;color:#0b2418;transition:width .4s;min-width:0;overflow:hidden}
+.ch{display:inline-block;background:#0b2418;border:1px solid var(--ln);border-radius:20px;padding:4px 12px;margin:3px;font:700 17px var(--hd)}.ch i{font:400 13px "Source Sans 3";color:var(--mu);margin-left:6px}
+.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:13px;text-align:center}.hm div{border-radius:5px;padding:7px 0;background:#0b2418}.hm .l{background:none;color:var(--mu)}
+.t{width:100%;border-collapse:collapse}.t td,.t th{padding:7px 4px;text-align:left;border-bottom:1px solid #245a3f;font-size:15px}.t th{color:var(--mu);font-weight:600}
+.bar{height:8px;border-radius:4px;background:var(--ac)}
+summary{cursor:pointer;color:var(--ac);font:500 16px var(--hd);margin:4px 0 10px}pre{white-space:pre-wrap;font:13px/1.55 ui-monospace,Menlo,monospace}
+a.x{color:var(--a);cursor:pointer;padding:4px 8px}
+#nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:2px;background:#0b2418ee;backdrop-filter:blur(10px);border:2px solid var(--ln);border-radius:26px;padding:5px;z-index:9;max-width:calc(100% - 16px)}
+#nav button{background:none;border:0;color:var(--mu);display:flex;flex-direction:column;align-items:center;gap:1px;font:500 12px var(--hd);letter-spacing:.4px;padding:7px 11px;border-radius:20px;cursor:pointer}
+#nav i{font-style:normal;font-size:20px;line-height:1.1}
+#nav button.on{background:var(--ac);color:#1d2a10}
+@media(min-width:900px){#nav{left:18px;top:50%;bottom:auto;transform:translateY(-50%);flex-direction:column;border-radius:22px}main{margin-left:max(110px,calc(50% - 470px + 50px))}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<nav id="nav">
+<button data-t="matches" class="on"><i>▤</i>Матчи</button>
+<button data-t="board"><i>◎</i>Прогноз</button>
+<button data-t="teams"><i>▦</i>Команды</button>
+<button data-t="lab"><i>⚗</i>Проверка</button>
+<button data-t="formula"><i>∑</i>Формула</button>
+</nav>
+<main>
+<h1>FIELD<b>-X</b> · тренерская доска</h1>
+<p class="sub">Единая модель: сила команд, форма за 5 матчей, статистика и спецпоказатели.</p>
 
-    <div class="max-w-6xl mx-auto">
-        <!-- Шапка -->
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 bg-emerald-950/80 p-6 rounded-2xl border border-emerald-800/60 shadow-xl">
-            <div>
-                <h1 class="text-2xl md:text-3xl font-black tracking-wider text-emerald-400">SOW-WIN <span class="text-xs px-2 py-1 bg-emerald-500 text-slate-950 rounded-md font-bold">SOW-X ENGINE</span></h1>
-                <p class="text-xs text-emerald-300/70 mt-1">Автономная тренерская платформа прогнозирования</p>
-            </div>
-            <!-- Вкладки управления -->
-            <div class="flex gap-3 mt-4 md:mt-0">
-                <button id="tab-matches" onclick="switchTab('matches')" class="px-5 py-2 rounded-xl font-bold text-sm bg-emerald-500 text-slate-950 shadow-lg transition">Матчи</button>
-                <button id="tab-stats" onclick="switchTab('stats')" class="px-5 py-2 rounded-xl font-bold text-sm bg-emerald-950/85 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900 transition">Ввод статов</button>
-                <button id="tab-lab" onclick="switchTab('lab')" class="px-5 py-2 rounded-xl font-bold text-sm bg-emerald-950/85 text-emerald-300 border border-emerald-700/50 hover:bg-emerald-900 transition">Лаборатория</button>
-            </div>
-        </header>
+<section id="matches" class="tab on">
+<h2>Результаты: топ-5 лиг и Лига чемпионов</h2>
+<div class="card">
+<input type="password" id="key" placeholder="Токен football-data.org" autocomplete="off" style="margin-bottom:8px">
+<button class="b" id="syn" style="width:100%">Обновить результаты и расписание</button>
+<p class="sub" id="sm" style="margin-top:6px">Токен хранится только в этом браузере. Новые счета встают в карточки сами, твоя статистика остаётся.</p>
+</div>
+<h2>Карточки матчей</h2>
+<div class="row"><select id="fk" aria-label="Показать"><option value="up">Будущие</option><option value="done">Сыгранные</option><option value="nos">Сыгранные без статистики</option></select><select id="fl" aria-label="Лига"></select></div>
+<p class="sub" id="cnt" style="margin-bottom:8px"></p>
+<div id="ml"></div>
+<h2>Импорт и экспорт</h2>
+<div class="card">
+<textarea id="bulk" rows="3" placeholder="Строки: дата,хозяева,гости,голы,голы[,xG,xG] или JSON из экспорта"></textarea>
+<div class="row" style="margin-top:8px"><button class="b" id="imp">Импорт</button><button class="b g" id="exp">Экспорт JSON</button><button class="b g" id="dem">Демо-данные</button><button class="b g" id="clr">Очистить всё</button></div>
+<p class="sub" id="msg" style="margin-top:6px">Данные хранятся в этом браузере, поэтому иногда делай экспорт.</p>
+</div>
+</section>
 
-        <!-- Секция: Матчи и Прогнозы -->
-        <main id="section-matches" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="matches-container">
-                <!-- Сюда динамически подгружаются матчи из app.js -->
-            </div>
-        </main>
+<section id="board" class="tab">
+<h2>Прогноз матча</h2>
+<div class="row"><select id="ly" aria-label="Слои расчёта"><option value="0">Слои: только сила</option><option value="1">Слои: + форма</option><option value="2">Слои: + статистика</option><option value="3" selected>Слои: полная формула</option></select></div>
+<div id="out"></div>
+</section>
 
-        <!-- Секция: Ввод статистики -->
-        <section id="section-stats" class="hidden board-card rounded-2xl p-6">
-            <h2 class="text-xl font-bold text-emerald-400 mb-4">Ручной ввод статистики матча</h2>
-            <p class="text-xs text-emerald-300/70 mb-6">Здесь ты можешь внести реальные данные (владение, удары, фолы, xG) для запуска расчета SOW-X.</p>
-            <div class="text-sm text-emerald-200 bg-emerald-900/40 p-4 rounded-xl border border-emerald-700/30">
-                Форма ввода данных находится в разработке. Сейчас ты можешь напрямую править файл <strong>matches.json</strong> в репозитории GitHub, добавляя параметры в поле stats.
-            </div>
-        </section>
+<section id="teams" class="tab">
+<h2>Команды</h2>
+<input id="tq" placeholder="Поиск команды" style="margin-bottom:8px">
+<div class="card" id="tt"></div>
+</section>
 
-        <!-- Секция: Лаборатория -->
-        <main id="section-lab" class="hidden board-card rounded-2xl p-6">
-            <h2 class="text-xl font-bold text-emerald-400 mb-4">Теневая лаборатория SOW-X</h2>
-            <p class="text-sm text-slate-300">Здесь тестируются коэффициенты нелинейных операторов ($\mathcal{D}_{entropy}$, веса фолов и ударов в створ) на исторической выборке матчей.</p>
-        </main>
-    </div>
+<section id="lab" class="tab">
+<h2>Честная проверка</h2>
+<div class="card">
+<p>Матчи идут по датам: прогноз делается только по прошлому, потом модель учится на результате. Слои добавляются по очереди: сила, форма, статистика, спецпоказатели. Видно, какой из них реально улучшает прогноз.</p>
+<button class="b" id="go" style="width:100%;margin-top:10px">Запустить проверку</button>
+<div id="lr" style="margin-top:12px"></div>
+</div>
+</section>
 
-    <script src="app.js"></script>
-</body>
-</html>
+<section id="formula" class="tab">
+<h2>Как считает FIELD-X</h2>
+<div class="card"><pre>0. Сила (учится после каждого матча)
+   λ_дом = exp(μ + H + атака_дом − защита_гость)
+   λ_гость = exp(μ + атака_гость − защита_дом)
+   параметр += η · (факт − λ);  факт = ½ голы + ½ xG
+
+1. Форма: последние 5 матчей
+   невязка = голы − ожидание модели, веса 5-4-3-2-1
+   λ ← λ · exp(0,12 · (атака + слабость обороны соперника)), не больше ±15%
+
+2. Статистика: с 5 матчей у обеих команд
+   профиль «за» и «против»: xG, удары в створ, удары, угловые, владение, точность пасов
+   сжат к среднему лиги; λ ← (1−ω)·λ + ω·λ_стат, ω от 3% до 30%
+
+3. Спецпоказатели: суммарно не больше ±10%
+
+4. Счёт: общий темп матча τ ~ Gamma(6), 30 значений τ вместо симуляции.
+   Голы команд связаны, без отдельных поправок на низкие счета.</pre></div>
+<div class="card">
+<p><b>Гладиатор</b>: 3 и больше побед подряд, усиливает атаку.</p>
+<p><b>Сухарь</b>: 2 и больше «сухих» матчей из 5, усиливает оборону.</p>
+<p><b>Таран</b>: медиана силы атаки по xG, ударам, створу и угловым.</p>
+<p><b>Контратака</b>: владение до 45% при xG выше нормы на 10%.</p>
+<p><b>Пустое владение</b>: владение от 55% при xG ниже нормы на 10%, ослабляет атаку.</p>
+<p><b>Грубая сила</b>: фолов и карточек на 25% больше нормы, ослабляет оборону.</p>
+<p><b>Реализация</b> и <b>Дыра</b>: голы к xG и пропущенные к xGA. Только показывают, «везёт» ли команде, в расчёт не входят.</p>
+<p class="sub" style="margin-top:8px">Отборы пока только хранятся. Пороги стартовые, их проверяет вкладка «Проверка».</p>
+</div>
+</section>
+</main>
+<script>
+const $=i=>document.getElementById(i),P={eta:.05,T:300,w:.5},MINN=5,W5=[5,4,3,2,1];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),cl=(x,a,b)=>Math.max(a,Math.min(b,x)),day=s=>Date.parse(s)/864e5,f2=v=>(v>=0?'+':'')+v.toFixed(2),pc=v=>Math.round(v*100)+'%',
+ mean=a=>a.reduce((s,v)=>s+v,0)/a.length,med=a=>{const s=a.slice().sort((x,y)=>x-y),k=s.length>>1;return s.length%2?s[k]:(s[k-1]+s[k])/2},
+ wm=(a,w)=>{let s=0,z=0;a.forEach((v,i)=>{s+=v*w[i];z+=w[i]});return z?s/z:0},
+ byD=(x,y)=>x.date<y.date?-1:x.date>y.date?1:0,oc=m=>m.hg>m.ag?0:m.hg==m.ag?1:2,am=p=>p.indexOf(Math.max(...p)),
+ nul=v=>v===''||v==null||isNaN(+v)?null:+v,hasS=m=>Object.keys(m.s1||{}).length>0||Object.keys(m.s2||{}).length>0,
+ sc=(p,o)=>[p.reduce((s,v,i)=>s+(v-(i==o?1:0))**2,0),-Math.log(Math.max(p[o],1e-4))];
+const KS=[['xg','xG'],['sh','Удары'],['sot','Удары в створ'],['pos','Владение, %'],['pa','Точность пасов, %'],['co','Угловые'],['fo','Фолы'],['yc','Жёлтые'],['rc','Красные'],['tk','Отборы']],
+ COMPS={PL:'Премьер-лига',PD:'Ла Лига',BL1:'Бундеслига',SA:'Серия A',FL1:'Лига 1',CL:'Лига чемпионов'};
+function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+let SEL=-1,M=[];try{M=JSON.parse(localStorage.getItem('fieldx')||'[]')}catch(e){}
+M.forEach(m=>{m.s1=m.s1||{};m.s2=m.s2||{};if(m.hx!=null)m.s1.xg=m.hx;if(m.ax!=null)m.s2.xg=m.ax;delete m.hx;delete m.ax;m.c=m.c||''});
+const save=()=>{try{localStorage.setItem('fieldx',JSON.stringify(M))}catch(e){}},sv=(m,s,k)=>{const v=(s?m.s2:m.s1)?.[k];return v==null?null:v};
+
+/* ===== модель ===== */
+function relax(x,t){if(x.t!=null){const f=Math.exp(-Math.max(0,t-x.t)/P.T);x.a*=f;x.d*=f}x.t=t}
+const lam=(L,A,B)=>[Math.exp(L.mu+L.h+A.a-B.d),Math.exp(L.mu+B.a-A.d)],hasE=e=>e.f&&Object.keys(e.f).length>0,
+ five=X=>X.E.slice(-5).reverse(),six=X=>X.E.filter(hasE).slice(-6),SA={xg:.45,sot:.25,sh:.12,co:.05,pos:.08,pa:.05},SD={xg:.55,sot:.3,sh:.15};
+function pf(L,X,Q,side){
+ const E=six(X);let s=0,z=0,n=0;
+ for(const k in Q){const G=L.g[k],v=E.map(e=>(e[side]||{})[k]).filter(x=>x!=null);if(!G||!(G.s>0)||v.length<MINN)continue;
+  const g=G.s/G.n;s+=Q[k]*Math.log((v.length*mean(v)+3*g)/(v.length+3)/g);z+=Q[k];n=Math.max(n,v.length)}
+ return z?[s/z,n]:[0,0]}
+function spec(L,X){
+ const e=five(X),E=six(X),o=[],lg=k=>L.g[k]&&L.g[k].s>0?L.g[k].s/L.g[k].n:null,
+ av=(k,s)=>{const v=E.map(x=>(x[s]||{})[k]).filter(z=>z!=null);return v.length>=3?mean(v):null},
+ add=(nm,kind,s,tx)=>o.push({nm,kind,s,tx});
+ let st=0;for(const x of e){if(x.gf>x.ga)st++;else break}
+ add('Гладиатор','att',e.length<3?null:st>=3?Math.min(st/5,1):0,'побед подряд: '+st);
+ const cs=e.filter(x=>x.ga==0).length;
+ add('Сухарь','def',e.length<3?null:cs>=2?Math.min(cs/4,1):0,'сухих матчей: '+cs+' из '+e.length);
+ const bm={xg:2,sot:7,sh:16,co:7},Ls=Object.keys(bm).map(k=>av(k,'f')==null?null:cl(av(k,'f')/bm[k],0,1)).filter(z=>z!=null);
+ add('Таран','att',Ls.length<2?null:cl(2*(med(Ls)-.5),-1,1),'комплексная сила атаки: xG, удары, створ, угловые');
+ const ps=av('pos','f'),xg=av('xg','f'),gx=lg('xg'),r=xg!=null&&gx?xg/gx:null;
+ add('Контратака','att',ps==null||r==null?null:ps<=45&&r>=1.1?Math.min((r-1)*2,1):0,'мало мяча, но моментов больше нормы');
+ add('Пустое владение','att',ps==null||r==null?null:ps>=55&&r<=.9?-Math.min((1-r)*2,1):0,'много мяча, но моментов меньше нормы');
+ const fo=av('fo','f'),yc=av('yc','f'),gf=lg('fo'),gy=lg('yc'),ix=fo==null||yc==null||!gf||!gy?null:(fo/gf+(yc+3*(av('rc','f')||0))/(gy+3*(lg('rc')||0)))/2;
+ add('Грубая сила','def',ix==null?null:ix>=1.25?-Math.min(ix-1,1):0,'фолов и карточек больше нормы');
+ const a1=e.filter(x=>x.f&&x.f.xg!=null),R1=a1.length>=3?a1.reduce((s,x)=>s+x.gf,0)/Math.max(a1.reduce((s,x)=>s+x.f.xg,0),.1):null;
+ add('Реализация','info',R1==null?null:cl(R1-1,-1,1),'голы к xG: '+(R1==null?'мало данных':R1.toFixed(2))+' (в расчёт не входит)');
+ const a2=e.filter(x=>x.c&&x.c.xg!=null),R2=a2.length>=3?a2.reduce((s,x)=>s+x.ga,0)/Math.max(a2.reduce((s,x)=>s+x.c.xg,0),.1):null;
+ add('Дыра','info',R2==null?null:cl(-(R2-1),-1,1),'пропущено к xGA: '+(R2==null?'мало данных':R2.toFixed(2))+' (в расчёт не входит)');
+ return o}
+const comp=sp=>{const v=sp.filter(x=>x.s!=null).map(x=>x.s);return v.length?med(v):null};
+function lay(L,A,B){
+ const[l1,l2]=lam(L,A,B),e1=five(A),e2=five(B),k=e=>e.length/(e.length+2),
+  fa=wm(e1.map(e=>e.res),W5)*k(e1),db=wm(e2.map(e=>e.rc),W5)*k(e2),fb=wm(e2.map(e=>e.res),W5)*k(e2),da=wm(e1.map(e=>e.rc),W5)*k(e1),
+  x1=l1*Math.exp(cl(.12*(fa+db),-.15,.15)),x2=l2*Math.exp(cl(.12*(fb+da),-.15,.15)),
+  [ra,na]=pf(L,A,SA,'f'),[rd,nd]=pf(L,B,SD,'c'),[rb,nb]=pf(L,B,SA,'f'),[rc,nc]=pf(L,A,SD,'c'),n=Math.min(na,nd,nb,nc),
+  om=n>=MINN?.3*Math.min(1,(n-MINN+1)/10):0,
+  y1=(1-om)*x1+om*Math.exp(L.mu+L.h+ra+rd),y2=(1-om)*x2+om*Math.exp(L.mu+rb+rc),
+  pA=spec(L,A),pB=spec(L,B),sm=(p,t)=>p.reduce((s,x)=>s+(x.kind==t&&x.s!=null?x.s:0),0),
+  z1=y1*Math.exp(cl(.05*(sm(pA,'att')-sm(pB,'def')),-.1,.1)),z2=y2*Math.exp(cl(.05*(sm(pB,'att')-sm(pA,'def')),-.1,.1));
+ return{l:[[l1,l2],[x1,x2],[y1,y2],[z1,z2]],om,sp:[pA,pB],fm:[e1,e2]}}
+function run(ms,cb){
+ const L={mu:Math.log(1.35),h:.2,g:{}},T={},g=n=>T[n]||(T[n]={a:0,d:0,n:0,t:null,E:[]});
+ ms.filter(m=>m.hg!=null).sort(byD).forEach(m=>{
+  const A=g(m.h),B=g(m.a),t=day(m.date);relax(A,t);relax(B,t);
+  const y=lay(L,A,B);if(cb)cb(m,y,A,B);
+  const q1=sv(m,0,'xg'),q2=sv(m,1,'xg'),w=P.w,yh=q1!=null?(1-w)*m.hg+w*q1:m.hg,ya=q2!=null?(1-w)*m.ag+w*q2:m.ag,
+   [l1,l2]=y.l[0],eh=yh-l1,ea=ya-l2,st=(e,q)=>cl(P.eta*(1+2.5/(1+q.n/3))*e,-.3,.3);
+  A.a+=st(eh,A);B.d-=st(eh,B);B.a+=st(ea,B);A.d-=st(ea,A);
+  L.h=cl(L.h+.01*eh,0,.5);L.mu+=.008*(eh+ea)/2;A.n++;B.n++;
+  A.E.push({m,d:m.date,o:m.a,hm:1,gf:m.hg,ga:m.ag,res:eh,rc:ea,f:m.s1,c:m.s2});
+  B.E.push({m,d:m.date,o:m.h,hm:0,gf:m.ag,ga:m.hg,res:ea,rc:eh,f:m.s2,c:m.s1});
+  KS.forEach(([k])=>[m.s1,m.s2].forEach(o=>{const v=o&&o[k];if(v!=null){const G=L.g[k]||(L.g[k]={s:0,n:0});G.s+=v;G.n++}}))});
+ return{L,T}}
+const TG=[],TW=[];(()=>{let z=0;for(let i=1;i<=30;i++){const t=i/10,w=t**5*Math.exp(-6*t);TG.push(t);TW.push(w);z+=w}TW.forEach((w,i)=>TW[i]=w/z)})();
+const pm=m=>{const r=[Math.exp(-m)];for(let i=1;i<11;i++)r.push(r[i-1]*m/i);return r};
+function dist(lh,la){
+ const D=new Float64Array(121);
+ TG.forEach((t,q)=>{const a=pm(lh*t),b=pm(la*t),w=TW[q];for(let i=0;i<11;i++)for(let j=0;j<11;j++)D[i*11+j]+=w*a[i]*b[j]});
+ let s=0;D.forEach(v=>s+=v);const p=[0,0,0];let bt=0,ov=0;
+ for(let i=0;i<11;i++)for(let j=0;j<11;j++){const v=D[i*11+j]/s;D[i*11+j]=v;p[i>j?0:i==j?1:2]+=v;if(i&&j)bt+=v;if(i+j>2)ov+=v}
+ return{m:D,p,bt,ov}}
+const FM=[[40,190],[105,60],[105,140],[105,240],[105,320],[185,100],[185,190],[185,280],[255,60],[255,190],[255,320]];
+function pitch(h,a,lh,la,sh){
+ const x=Math.round(70+500*sh),sw=v=>(.8+v*1.6).toFixed(1),
+ ar=(c,m,v,aw)=>[70,190,310].map(y=>{const x0=aw?540:100,x1=aw?100:540,y2=190+(y-190)*.3;
+  return`<path d="M${x0} ${y} Q320 ${y==190?190:y+(190-y)*.55} ${x1} ${y2}" fill="none" stroke="${c}" stroke-width="${sw(v)}" stroke-dasharray="10 7" marker-end="url(#${m})" opacity=".9"/>`}).join(''),
+ dots=(aw,c)=>FM.map(p=>`<circle cx="${aw?640-p[0]:p[0]}" cy="${p[1]}" r="8" fill="${c}" stroke="#fff" stroke-width="1.5"/>`).join(''),
+ tx=(X,an,s)=>`<text x="${X}" y="38" text-anchor="${an}" fill="#f1f5ea" font-size="18" font-weight="700" stroke="#0f2e20" stroke-width="4" paint-order="stroke">${esc(s)}</text>`;
+ return`<svg viewBox="0 0 640 380" width="100%" role="img" aria-label="Тактическая доска"><defs>
+<pattern id="gp" width="80" height="380" patternUnits="userSpaceOnUse"><rect width="40" height="380" fill="#1f6b43"/><rect x="40" width="40" height="380" fill="#1b613d"/></pattern>
+<marker id="ah" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto"><path d="M0 0L14 7L0 14Z" fill="#6cc4ff"/></marker>
+<marker id="aa" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto"><path d="M0 0L14 7L0 14Z" fill="#ff9159"/></marker></defs>
+<rect x="10" y="10" width="620" height="360" rx="8" fill="url(#gp)"/>
+<path d="M10 10H${x}V370H10Z" fill="#6cc4ff" opacity=".16"/><path d="M${x} 10H630V370H${x}Z" fill="#ff9159" opacity=".16"/>
+<g fill="none" stroke="#f1f5ea" stroke-opacity=".8" stroke-width="2"><rect x="10" y="10" width="620" height="360"/><path d="M320 10V370"/><circle cx="320" cy="190" r="48"/><rect x="10" y="105" width="95" height="170"/><rect x="535" y="105" width="95" height="170"/><rect x="10" y="150" width="36" height="80"/><rect x="594" y="150" width="36" height="80"/></g>
+${dots(0,'#6cc4ff')}${dots(1,'#ff9159')}${ar('#6cc4ff','ah',lh,0)}${ar('#ff9159','aa',la,1)}
+<circle cx="${x}" cy="190" r="10" fill="#fff" stroke="#0f2e20" stroke-width="3"/>${tx(24,'start',h)}${tx(616,'end',a)}</svg>`}
+
+/* ===== интерфейс ===== */
+function sform(i){const m=M[i];
+ return`<div class="row" style="margin-bottom:2px"><span></span><b class="sub" style="text-align:center">${esc(m.h)}</b><b class="sub" style="text-align:center">${esc(m.a)}</b></div>`
+ +KS.map(([k,t])=>`<div class="row" style="margin-bottom:6px"><span class="sub" style="align-self:center">${t}</span>${[1,2].map(j=>`<input type="number" step="any" min="0" data-s="${j}" data-k="${k}" value="${sv(m,j-1,k)??''}">`).join('')}</div>`).join('')
+ +`<button class="b" style="width:100%" onclick="ss(this,${i})">Сохранить статистику</button><span class="sub"></span>`}
+function ss(b,i){const m=M[i],s=[{},{}],o=b.nextElementSibling;
+ b.parentElement.querySelectorAll('input').forEach(e=>{const v=nul(e.value);if(v!=null)s[e.dataset.s-1][e.dataset.k]=v});
+ if([0,1].some(j=>s[j].pos>100||s[j].pa>100||s[j].sot>s[j].sh)){o.textContent=' Проверь: проценты до 100, ударов в створ не больше, чем ударов.';return}
+ m.s1=s[0];m.s2=s[1];save();o.textContent=' Сохранено ✓'}
+function card(m,i){
+ const r=m.pr?`<span class="ch" style="font-size:14px">${pc(m.pr.p[0])} · ${pc(m.pr.p[1])} · ${pc(m.pr.p[2])}${m.hg!=null?(oc(m)==am(m.pr.p)?' ✓':' ✗'):''}</span>`:'';
+ return`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}</span>${r}</div>
+<p style="font:700 19px var(--hd);margin:4px 0 8px">${esc(m.h)} <span style="color:var(--ac)">${m.hg!=null?m.hg+':'+m.ag:'—'}</span> ${esc(m.a)}</p>
+${m.hg==null?`<button class="b" style="width:100%;margin-bottom:8px" onclick="fc(${i})">Прогноз</button>`:''}
+<details><summary>Статистика ${hasS(m)?'📊':''}</summary>${sform(i)}</details></div>`}
+function list(){
+ const f=$('fk').value,cp=$('fl').value,td=new Date(Date.now()-2*864e5).toISOString().slice(0,10),
+ rows=M.map((m,i)=>[m,i]).filter(([m])=>(!cp||m.c==cp)&&(f=='up'?m.hg==null&&m.date>=td:f=='done'?m.hg!=null:m.hg!=null&&!hasS(m)))
+  .sort((x,y)=>(f=='up'?1:-1)*byD(x[0],y[0])).slice(0,30);
+ $('cnt').textContent=`В базе матчей: ${M.length}, со статистикой: ${M.filter(hasS).length}. Профиль команды включается в расчёт с ${MINN} матчей со статистикой.`;
+ $('ml').innerHTML=rows.map(([m,i])=>card(m,i)).join('')||'<div class="card"><p>Здесь пусто. Нажми «Обновить результаты и расписание» или выбери другой фильтр.</p></div>'}
+function fc(i){SEL=i;go('board');board(1)}
+function board(w){
+ const o=$('out'),m=M[SEL];
+ if(!m){o.innerHTML='<div class="card"><p>Открой будущий матч на вкладке «Матчи» и нажми «Прогноз».</p></div>';return}
+ const{L,T}=run(M),bl=n=>T[n]||{a:0,d:0,n:0,t:null,E:[]},A=bl(m.h),B=bl(m.a),t=day(m.date);relax(A,t);relax(B,t);
+ const y=lay(L,A,B),ly=+$('ly').value,[lh,la]=y.l[ly],d=dist(lh,la),p=d.p,top=[];
+ if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10)};save();list()}
+ for(let i=0;i<11;i++)for(let j=0;j<11;j++)top.push([i,j,d.m[i*11+j]]);top.sort((a,b)=>b[2]-a[2]);
+ const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=['Сила','+ форма','+ статистика','+ спецпоказатели'],
+ col=(X,n,i)=>{const sp=y.sp[i],cp=comp(sp);
+  return`<div class="card"><h2 style="margin:0 0 4px">${esc(n)}</h2><p class="sub">Форма (от старых к новым): <b style="color:var(--tx)">${y.fm[i].slice().reverse().map(ltr).join('')||'нет данных'}</b>${cp!=null?' · сводка спецпоказателей '+f2(cp):''}</p>
+<div>${sp.filter(x=>x.s!=null&&Math.abs(x.s)>=.05).map(x=>`<span class="ch" style="font-size:14px;color:${x.s>0?'var(--ac)':'var(--a)'}" title="${esc(x.tx)}">${x.nm} ${f2(x.s)}</span>`).join('')||'<span class="sub">спецпоказатели не обнаружены</span>'}</div>
+<p class="sub" style="margin:8px 0 4px">Последние матчи: открой и внеси статистику</p>`
+  +X.E.slice(-6).reverse().map(x=>`<details><summary>${ltr(x)} · ${x.d.slice(5)} ${x.hm?'дома':'в гостях'}, ${esc(x.o)} ${x.gf}:${x.ga} ${hasS(x.m)?'📊':''}</summary>${sform(M.indexOf(x.m))}</details>`).join('')+'</div>'};
+ o.innerHTML=`<div class="card" style="padding:8px"><p class="sub" style="padding:2px 6px">${m.date} · ${COMPS[m.c]||''}${m.hg!=null?' · сыграно '+m.hg+':'+m.ag:''}</p>${pitch(m.h,m.a,lh,la,lh/(lh+la))}</div>
+<div class="card"><div class="pb"><div style="width:${p[0]*100}%;background:var(--h)">${pc(p[0])}</div><div style="width:${p[1]*100}%;background:#d9e2dc">${pc(p[1])}</div><div style="width:${p[2]*100}%;background:var(--a)">${pc(p[2])}</div></div>
+<p class="sub" style="display:flex;justify-content:space-between;margin-top:4px"><span>победа: ${esc(m.h)}</span><span>ничья</span><span>победа: ${esc(m.a)}</span></p></div>
+<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>вес статистики${y.om?'':' (копится)'}</span></div></div></div>
+<div>${top.slice(0,6).map(c=>`<span class="ch">${c[0]}:${c[1]}<i>${(c[2]*100).toFixed(1)}%</i></span>`).join('')}</div>
+<h2>Как менялась λ по слоям</h2><div class="card"><table class="t"><tr><th>Слой<th>Хозяева<th>Гости</tr>${y.l.map((l,i)=>`<tr${i==ly?' style="color:var(--ac);font-weight:600"':''}><td>${nm[i]}<td>${l[0].toFixed(2)}<td>${l[1].toFixed(2)}`).join('')}</table></div>
+${col(A,m.h,0)}${col(B,m.a,1)}
+${m.pr&&m.hg==null?'<p class="sub">Прогноз записан в карточку матча. После игры счёт подставится при обновлении результатов, останется добавить статистику.</p>':''}
+<p class="sub">Это вероятности, а не обещание счёта. Полезность каждого слоя проверяется на вкладке «Проверка».</p>`}
+function drawTeams(){
+ const{L,T}=run(M),t=Date.now()/864e5,q=$('tq').value.trim().toLowerCase(),
+ rows=Object.entries(T).filter(([n])=>n.toLowerCase().includes(q)).map(([n,x])=>(relax(x,t),[n,x])).sort((p,r)=>(r[1].a+r[1].d)-(p[1].a+p[1].d)).slice(0,60);
+ if(!rows.length){$('tt').innerHTML='<p>Нет сыгранных матчей. Загрузи результаты на вкладке «Матчи».</p>';return}
+ const mx=Math.max(.3,...rows.map(r=>Math.abs(r[1].a+r[1].d)));
+ $('tt').innerHTML='<table class="t"><tr><th>Команда<th>Сила<th>Форма<th>Стат.</tr>'+rows.map(([n,x])=>{const s=x.a+x.d,k=six(x).length,sp=spec(L,x).filter(z=>z.s!=null&&Math.abs(z.s)>=.05);
+  return`<tr><td>${esc(n)}<div class="sub">${sp.map(z=>z.nm+' '+f2(z.s)).join(' · ')}</div><td style="width:26%"><div class="bar" style="width:${cl(50+50*s/mx,4,100)}%"></div>${f2(s)}<td>${five(x).reverse().map(e=>e.gf>e.ga?'В':e.gf==e.ga?'Н':'П').join('')}<td>${k}${k<MINN?' / '+MINN:' ✓'}`}).join('')+'</table>'}
+function lab(){
+ const R=[0,1,2,3,4].map(()=>[0,0]),c=[0,0,0];let n=0,tot=0,ns=0;
+ run(M,(m,y,A,B)=>{tot++;const o=oc(m);
+  if(tot>20&&A.n>=2&&B.n>=2){[c.map(v=>(v+1)/(tot+2)),...y.l.map(l=>dist(l[0],l[1]).p)].forEach((p,i)=>{const s=sc(p,o);R[i][0]+=s[0];R[i][1]+=s[1]});n++;if(y.om)ns++}
+  c[o]++});
+ if(!n){$('lr').innerHTML='<p>Нужно минимум 25–30 сыгранных матчей.</p>';return}
+ const nm=['Частоты лиги (база)','Сила','+ форма','+ статистика','+ спецпоказатели'],bi=R.reduce((b,r,i)=>r[1]<R[b][1]?i:b,0),best=k=>Math.min(...R.map(r=>r[k]));
+ $('lr').innerHTML=`<table class="t"><tr><th>Модель<th>Brier<th>LogLoss</tr>${R.map((r,i)=>`<tr><td>${nm[i]}${[0,1].map(k=>`<td${r[k]==best(k)?' style="color:var(--ac);font-weight:700"':''}>${(r[k]/n).toFixed(3)}`).join('')}`).join('')}</table>
+<p style="margin-top:10px">Проверено матчей: ${n}. Лучший по LogLoss: «${nm[bi]}». Статистика участвовала в ${ns} матчах. Каждый слой должен снижать оба числа, иначе его вес стоит уменьшить. Меньше значение — лучше.</p>
+<p class="sub" style="margin-top:6px">Цифры старых матчей ты вносишь сейчас, а тест считает их известными тогда, поэтому проверка приблизительная. Самый надёжный тест — прогнозы, записанные до матча: они хранятся в карточках с отметкой ✓ или ✗.</p>`}
+function add(m){
+ const g=v=>v==null||v===''?null:Math.round(+v),ns=(o,x)=>{const r={};KS.forEach(([k])=>{const v=nul(k=='xg'&&(o||{})[k]==null?x:(o||{})[k]);if(v!=null)r[k]=v});return r};
+ m={fid:m.fid||null,c:m.c||'',date:String(m.date||'').trim(),h:String(m.h||'').trim(),a:String(m.a||'').trim(),hg:g(m.hg),ag:g(m.ag),s1:ns(m.s1,m.hx),s2:ns(m.s2,m.ax),pr:m.pr||null};
+ if(!m.h||!m.a||m.h==m.a||!/^\d{4}-\d\d-\d\d$/.test(m.date)||(m.hg==null)!=(m.ag==null)||(m.hg!=null&&!(m.hg>=0&&m.ag>=0)))return 0;
+ let i=m.fid?M.findIndex(x=>x.fid==m.fid):-1;if(i<0)i=M.findIndex(x=>x.date==m.date&&x.h==m.h&&x.a==m.a);
+ if(i<0)M.push(m);else{const o=M[i];M[i]={...o,...m,fid:m.fid||o.fid,c:m.c||o.c,hg:m.hg??o.hg,ag:m.ag??o.ag,s1:{...o.s1,...m.s1},s2:{...o.s2,...m.s2},pr:m.pr||o.pr}}
+ return 1}
+async function sync(){
+ const tk=$('key').value.trim(),sm=t=>$('sm').textContent=t,nm=t=>t.shortName||t.name,ok=[],bad=[];
+ if(!tk)return sm('Вставь токен football-data.org.');
+ try{localStorage.setItem('fxkey',tk)}catch(e){}
+ for(const c of Object.keys(COMPS)){
+  sm(`Загружаю: ${COMPS[c]} (${ok.length+bad.length+1} из 6)…`);
+  try{const r=await fetch(`https://api.football-data.org/v4/competitions/${c}/matches`,{headers:{'X-Auth-Token':tk}});
+   if(!r.ok)throw new Error(r.status==429?'лимит запросов':r.status==403?'нет доступа':r.status==400||r.status==401?'токен не подходит':'ошибка '+r.status);
+   ((await r.json()).matches||[]).forEach(x=>{const f=x.score&&x.score.fullTime,fin=x.status=='FINISHED'&&f&&f.home!=null;
+    if(fin||x.status=='SCHEDULED'||x.status=='TIMED')add({fid:x.id,c,date:x.utcDate.slice(0,10),h:nm(x.homeTeam),a:nm(x.awayTeam),hg:fin?f.home:null,ag:fin?f.away:null})});
+   ok.push(c)}catch(e){bad.push(COMPS[c]+' ('+(e instanceof TypeError?'нет связи':e.message)+')');if(/токен/.test(e.message))break}}
+ sm(`Готово: загружено лиг ${ok.length} из 6`+(bad.length?'. Не получилось: '+bad.join(', '):'')+'.');refresh()}
+function refresh(){save();list();if(SEL>=0&&M[SEL])board()}
+function demo(){
+ const R=mulberry32(7),N=['Орлы','Волки','Львы','Быки','Соколы','Акулы','Тигры','Кобры'],Q=N.map(()=>[R()*.8-.4,R()*.8-.4]),
+ gp=l=>{const e=Math.exp(-l);let p=1,k=0;do{k++;p*=R()}while(p>e);return k-1};let c=0;
+ for(let r=0;r<2;r++)for(let i=0;i<8;i++)for(let j=0;j<8;j++)if(i!=j)add({date:new Date(Date.parse('2026-01-03')+Math.floor(c++/4)*864e5).toISOString().slice(0,10),h:N[i],a:N[j],hg:gp(Math.exp(.5+Q[i][0]-Q[j][1])),ag:gp(Math.exp(.3+Q[j][0]-Q[i][1]))})}
+
+function go(t){document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='teams')drawTeams();scrollTo(0,0)}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{go(b.dataset.t);if(b.dataset.t=='board')board()});
+$('ly').onchange=()=>board();$('tq').oninput=drawTeams;$('fk').onchange=$('fl').onchange=list;$('syn').onclick=sync;
+$('go').onclick=()=>{$('lr').textContent='Считаю…';setTimeout(lab,30)};
+$('imp').onclick=()=>{const s=$('bulk').value.trim();let k=0;
+ if(s[0]=='['){try{JSON.parse(s).forEach(m=>k+=add(m))}catch(e){}}
+ else s.split('\n').forEach(l=>{const c=l.split(/[;,\t]/).map(x=>x.trim());k+=add({date:c[0],h:c[1],a:c[2],hg:c[3],ag:c[4],hx:c[5],ax:c[6]})});
+ $('msg').textContent='Добавлено или обновлено матчей: '+k;$('bulk').value='';refresh()};
+$('exp').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(M,null,1)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='fieldx-matches.json';a.click();URL.revokeObjectURL(u)};
+$('dem').onclick=()=>{demo();$('msg').textContent='Демо-данные добавлены (вымышленные команды).';refresh()};
+$('clr').onclick=()=>{if(confirm('Удалить все матчи из этого браузера?')){M=[];SEL=-1;refresh()}};
+$('fl').innerHTML='<option value="">Все лиги</option>'+Object.entries(COMPS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+try{$('key').value=localStorage.getItem('fxkey')||''}catch(e){}
+refresh();
+</script></body></html>
