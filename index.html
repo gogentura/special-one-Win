@@ -28,6 +28,7 @@ summary{cursor:pointer;color:var(--ac);font:500 16px var(--hd);margin:4px 0 10px
 .pl{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:8px}.pl button{flex:none;background:#0b2418;border:1px solid var(--ln);color:var(--tx);border-radius:18px;padding:7px 13px;font:500 14px var(--hd);cursor:pointer}.pl button.on{background:var(--ac);color:#1d2a10;border-color:var(--ac)}
 .tw{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--a)}.tw div{background:var(--h)}.sc{overflow-x:auto}.cr{width:18px;height:18px;vertical-align:middle;margin-right:6px;object-fit:contain}
 #nav button{padding:7px 10px}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-bottom:10px}.sl{display:block;font-size:12px;color:var(--mu)}.sl input{margin-top:2px;padding:8px}
 pre{white-space:pre-wrap;font:13px/1.55 ui-monospace,Menlo,monospace}
 a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 #nav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));display:flex;gap:2px;background:#0b2418ee;backdrop-filter:blur(10px);border:2px solid var(--ln);border-radius:26px;padding:5px;z-index:9;max-width:calc(100% - 16px)}
@@ -47,6 +48,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <main>
 <h1>FIELD<b>-X</b> · тренерская доска</h1>
 <p class="sub">Единая модель: сила команд, форма за 5 матчей, статистика и спецпоказатели.</p>
+<select id="sz" aria-label="Сезон" style="margin-top:8px"></select>
 
 <section id="matches" class="tab on">
 <h2>Данные</h2>
@@ -66,7 +68,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 
 <section id="board" class="tab">
 <h2>Прогноз матча</h2>
-<div class="row"><select id="ly" aria-label="Слои расчёта"><option value="0">Слои: только сила</option><option value="1">Слои: + форма</option><option value="2">Слои: + статистика</option><option value="3" selected>Слои: полная формула</option></select></div>
+<div class="row"><select id="ly" aria-label="Слои расчёта"><option value="auto" selected>Слои: авто (самонастройка)</option><option value="0">Слои: только сила</option><option value="1">Слои: + форма</option><option value="2">Слои: + статистика</option><option value="3">Слои: полная формула</option></select></div>
 <div id="out"></div>
 </section>
 
@@ -117,11 +119,14 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <p><b>Пустое владение</b>: владение от 55% при xG ниже нормы на 10%, ослабляет атаку.</p>
 <p><b>Грубая сила</b>: фолов и карточек на 25% больше нормы, ослабляет оборону.</p>
 <p><b>Реализация</b> и <b>Дыра</b>: голы к xG и пропущенные к xGA. Только показывают, «везёт» ли команде, в расчёт не входят.</p>
-<p class="sub" style="margin-top:8px">Все лиги и Лига чемпионов считаются в одной базе: форма и сила берутся из всех матчей команды. Отборы пока только хранятся. Пороги стартовые, их проверяет вкладка «Проверка».</p>
+<p class="sub" style="margin-top:8px">Все лиги и Лига чемпионов считаются в одной базе: форма и сила берутся из всех матчей команды. Самонастройка: проверка сама выбирает лучший слой и подгоняет резкость вероятностей и долю ничьих. Она включается, только если улучшение подтверждается на отложенных 30% матчей. Таблицы и списки идут по сезонам, а модель учится на всех сезонах сразу. Отборы пока только хранятся. Пороги стартовые, их проверяет вкладка «Проверка».</p>
 </div>
 </section>
 </main>
 <script>
+let CAL=null,SZ='';try{CAL=JSON.parse(localStorage.getItem('fxcal')||'null')}catch(e){}
+const seasonOf=d=>{const y=+d.slice(0,4)-(+d.slice(5,7)<7?1:0);return y+'/'+String(y+1).slice(2)};
+
 
 const $=i=>document.getElementById(i),P={eta:.05,T:300,w:.5},MINN=5,W5=[5,4,3,2,1];
 const esc=s=>String(s).replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';'),cl=(x,a,b)=>Math.max(a,Math.min(b,x)),day=s=>Date.parse(s)/864e5,f2=v=>(v>=0?'+':'')+v.toFixed(2),pc=v=>Math.round(v*100)+'%',
@@ -136,6 +141,7 @@ function mulberry32(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15
 let SEL=-1,M=[];try{M=JSON.parse(localStorage.getItem('fieldx')||'[]')}catch(e){}
 M.forEach(m=>{m.s1=m.s1||{};m.s2=m.s2||{};if(m.hx!=null)m.s1.xg=m.hx;if(m.ax!=null)m.s2.xg=m.ax;delete m.hx;delete m.ax;m.c=m.c||''});
 const DEMO=['Орлы','Волки','Львы','Быки','Соколы','Акулы','Тигры','Кобры'];M=M.filter(m=>!DEMO.includes(m.h)&&!DEMO.includes(m.a));
+{const o=M;M=[];o.forEach(x=>add(x))}
 const save=()=>{try{localStorage.setItem('fieldx',JSON.stringify(M))}catch(e){}},sv=(m,s,k)=>{const v=(s?m.s2:m.s1)?.[k];return v==null?null:v};
 
 /* ===== модель ===== */
@@ -217,10 +223,10 @@ ${dots(0,'#6cc4ff')}${dots(1,'#ff9159')}${ar('#6cc4ff','ah',lh,0)}${ar('#ff9159'
 <circle cx="${x}" cy="190" r="10" fill="#fff" stroke="#0f2e20" stroke-width="3"/>${tx(24,'start',h)}${tx(616,'end',a)}</svg>`}
 
 /* ===== интерфейс ===== */
-function sform(i){const m=M[i];
- return`<div class="row" style="margin-bottom:2px"><span></span><b class="sub" style="text-align:center">${esc(m.h)}</b><b class="sub" style="text-align:center">${esc(m.a)}</b></div>`
- +KS.map(([k,t])=>`<div class="row" style="margin-bottom:6px"><span class="sub" style="align-self:center">${t}</span>${[1,2].map(j=>`<input type="number" step="any" min="0" data-s="${j}" data-k="${k}" value="${sv(m,j-1,k)??''}">`).join('')}</div>`).join('')
- +`<button class="b" style="width:100%" onclick="ss(this,${i})">Сохранить статистику</button><span class="sub"></span>`}
+function sform(i){const m=M[i],hd=(n,c,t)=>`<div style="border-top:3px solid ${c};padding-top:4px"><b style="color:${c}">${esc(n)}</b><div class="sub" style="font-size:12px">${t}</div></div>`;
+ return`<div class="sg">${hd(m.h,'var(--h)','хозяева')}${hd(m.a,'var(--a)','гости')}`
+ +KS.map(([k,t])=>[1,2].map(j=>`<label class="sl">${t}<input type="number" inputmode="decimal" step="any" min="0" data-s="${j}" data-k="${k}" value="${sv(m,j-1,k)??''}"></label>`).join('')).join('')
+ +`</div><button class="b" style="width:100%" onclick="ss(this,${i})">Сохранить статистику</button><span class="sub"></span>`}
 function ss(b,i){const m=M[i],s=[{},{}],o=b.nextElementSibling;
  b.parentElement.querySelectorAll('input').forEach(e=>{const v=nul(e.value);if(v!=null)s[e.dataset.s-1][e.dataset.k]=v});
  if([0,1].some(j=>s[j].pos>100||s[j].pa>100||s[j].sot>s[j].sh)){o.textContent=' Проверь: проценты до 100, ударов в створ не больше, чем ударов.';return}
@@ -233,7 +239,7 @@ ${m.hg==null?`<button class="b" style="width:100%;margin-bottom:8px" onclick="fc
 <details><summary>Статистика ${hasS(m)?'📊':''}</summary>${sform(i)}</details></div>`}
 function list(){
  const f=$('fk').value,cp=$('fl').value,q=$('fq').value.trim().toLowerCase(),td=new Date(Date.now()-2*864e5).toISOString().slice(0,10),
- rows=M.map((m,i)=>[m,i]).filter(([m])=>(!cp||m.c==cp)&&(!q||(m.h+' '+m.a).toLowerCase().includes(q))&&(f=='up'?m.hg==null&&m.date>=td:f=='done'?m.hg!=null:m.hg!=null&&!hasS(m)))
+ rows=M.map((m,i)=>[m,i]).filter(([m])=>(!SZ||m.se==SZ)&&(!cp||m.c==cp)&&(!q||(m.h+' '+m.a).toLowerCase().includes(q))&&(f=='up'?m.hg==null&&m.date>=td:f=='done'?m.hg!=null:m.hg!=null&&!hasS(m)))
   .sort((x,y)=>(f=='up'?1:-1)*byD(x[0],y[0]));
  $('cnt').textContent=`Найдено: ${rows.length}. В базе матчей: ${M.length}, со статистикой: ${M.filter(hasS).length}. Профиль команды включается с ${MINN} матчей со статистикой.`;
  $('ml').innerHTML=rows.slice(0,LIM).map(([m,i])=>card(m,i)).join('')||'<div class="card"><p>Здесь пусто. Если данных совсем нет, проверь, что в репозитории есть файл data/matches.json.</p></div>'
@@ -243,10 +249,10 @@ function board(w){
  const o=$('out'),m=M[SEL];
  if(!m){o.innerHTML='<div class="card"><p>Открой будущий матч на вкладке «Матчи» и нажми «Прогноз».</p></div>';return}
  const{L,T}=run(M),bl=n=>T[n]||{a:0,d:0,n:0,t:null,E:[]},A=bl(m.h),B=bl(m.a),t=day(m.date);relax(A,t);relax(B,t);
- const y=lay(L,A,B),ly=+$('ly').value,[lh,la]=y.l[ly],d=dist(lh,la),p=d.p,top=[];
+ const y=lay(L,A,B),md=$('ly').value,C=md=='auto'?calib():null,ly=C?C.l:+md,[lh,la]=y.l[ly],d0=dist(lh,la),d=C&&C.on?calD(d0,C):d0,p=d.p,top=[];
  if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10)};save();list()}
  for(let i=0;i<11;i++)for(let j=0;j<11;j++)top.push([i,j,d.m[i*11+j]]);top.sort((a,b)=>b[2]-a[2]);
- const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=['Сила','+ форма','+ статистика','+ спецпоказатели'],
+ const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=['Сила','+ форма','+ статистика','+ спецпоказатели'],mt=C?(C.on?`авто: слой «${nm[ly]}», калибровка включена`:'авто: полная формула, калибровка пока выключена'):'слой выбран вручную',
  col=(X,n,i)=>{const sp=y.sp[i],cp=comp(sp);
   return`<div class="card"><h2 style="margin:0 0 4px">${esc(n)}</h2><p class="sub">Форма (от старых к новым): <b style="color:var(--tx)">${y.fm[i].slice().reverse().map(ltr).join('')||'нет данных'}</b>${cp!=null?' · сводка спецпоказателей '+f2(cp):''}</p>
 <div>${sp.filter(x=>x.s!=null&&Math.abs(x.s)>=.05).map(x=>`<span class="ch" style="font-size:14px;color:${x.s>0?'var(--ac)':'var(--a)'}" title="${esc(x.tx)}">${x.nm} ${f2(x.s)}</span>`).join('')||'<span class="sub">спецпоказатели не обнаружены</span>'}</div>
@@ -255,7 +261,7 @@ function board(w){
  o.innerHTML=`<div class="card" style="padding:8px"><p class="sub" style="padding:2px 6px">${m.date} · ${COMPS[m.c]||''}${m.hg!=null?' · сыграно '+m.hg+':'+m.ag:''}</p>${pitch(m.h,m.a,lh,la,lh/(lh+la))}</div>
 <div class="card"><div class="pb"><div style="width:${p[0]*100}%;background:var(--h)">${pc(p[0])}</div><div style="width:${p[1]*100}%;background:#d9e2dc">${pc(p[1])}</div><div style="width:${p[2]*100}%;background:var(--a)">${pc(p[2])}</div></div>
 <p class="sub" style="display:flex;justify-content:space-between;margin-top:4px"><span>победа: ${esc(m.h)}</span><span>ничья</span><span>победа: ${esc(m.a)}</span></p></div>
-<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>вес статистики${y.om?'':' (копится)'}</span></div></div></div>
+<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>вес статистики${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}.</p></div>
 <div>${top.slice(0,6).map(c=>`<span class="ch">${c[0]}:${c[1]}<i>${(c[2]*100).toFixed(1)}%</i></span>`).join('')}</div>
 <h2>Как менялась λ по слоям</h2><div class="card"><table class="t"><tr><th>Слой<th>Хозяева<th>Гости</tr>${y.l.map((l,i)=>`<tr${i==ly?' style="color:var(--ac);font-weight:600"':''}><td>${nm[i]}<td>${l[0].toFixed(2)}<td>${l[1].toFixed(2)}`).join('')}</table></div>
 ${charts(A,B,m)}${col(A,m.h,0)}${col(B,m.a,1)}
@@ -268,37 +274,57 @@ function drawTeams(){
  const mx=Math.max(.3,...rows.map(r=>Math.abs(r[1].a+r[1].d)));
  $('tt').innerHTML='<table class="t"><tr><th>Команда<th>Сила<th>Форма<th>Стат.</tr>'+rows.map(([n,x])=>{const s=x.a+x.d,k=six(x).length,sp=spec(L,x).filter(z=>z.s!=null&&Math.abs(z.s)>=.05);
   return`<tr><td>${cr(n)}${esc(n)}<div class="sub">${sp.map(z=>z.nm+' '+f2(z.s)).join(' · ')}</div><td style="width:26%"><div class="bar" style="width:${cl(50+50*s/mx,4,100)}%"></div>${f2(s)}<td>${five(x).reverse().map(e=>e.gf>e.ga?'В':e.gf==e.ga?'Н':'П').join('')}<td>${k}${k<MINN?' / '+MINN:' ✓'}`}).join('')+'</table>'}
-function lab(){
- const R=[0,1,2,3,4].map(()=>[0,0]),c=[0,0,0];let n=0,tot=0,ns=0;
+function evalAll(){
+ const R=[0,1,2,3,4].map(()=>[0,0]),c=[0,0,0],rec=[];let n=0,tot=0,ns=0;
  run(M,(m,y,A,B)=>{tot++;const o=oc(m);
-  if(tot>20&&A.n>=2&&B.n>=2){[c.map(v=>(v+1)/(tot+2)),...y.l.map(l=>dist(l[0],l[1]).p)].forEach((p,i)=>{const s=sc(p,o);R[i][0]+=s[0];R[i][1]+=s[1]});n++;if(y.om)ns++}
+  if(tot>20&&A.n>=2&&B.n>=2){const ps=y.l.map(l=>dist(l[0],l[1]).p);
+   [c.map(v=>(v+1)/(tot+2)),...ps].forEach((p,i)=>{const s=sc(p,o);R[i][0]+=s[0];R[i][1]+=s[1]});rec.push({o,ps});n++;if(y.om)ns++}
   c[o]++});
+ return{R,n,ns,rec}}
+const adj=(p,t,d)=>{const q=p.map(v=>Math.pow(Math.max(v,1e-6),t));q[1]*=1+d;const z=q[0]+q[1]+q[2];return q.map(v=>v/z)},
+ ll=(rec,l,t,d)=>rec.reduce((s,r)=>s-Math.log(Math.max(adj(r.ps[l],t,d)[r.o],1e-4)),0)/rec.length;
+function fit(rec){let b={l:3,t:1,d:0,v:ll(rec,3,1,0)};
+ for(let l=0;l<4;l++)for(const t of[.8,.9,1,1.1,1.2,1.3])for(const d of[-.1,0,.1,.2,.3]){const v=ll(rec,l,t,d);if(v<b.v-1e-9)b={l,t,d,v}}
+ return b}
+function calib(E0){
+ const sig=M.filter(m=>m.hg!=null).length+'|'+M.filter(hasS).length;
+ if(!E0&&CAL&&CAL.sig==sig)return CAL;
+ const E=E0||evalAll(),n=E.n;let C={sig,on:false,l:3,t:1,d:0,n};
+ if(n>=60){const k=Math.floor(n*.7),f=fit(E.rec.slice(0,k)),ho=E.rec.slice(k),h0=ll(ho,3,1,0),h1=ll(ho,f.l,f.t,f.d);
+  C=h1<h0-.004?{...fit(E.rec),sig,on:true,n,h0,h1}:{...C,h0,h1}}
+ CAL=C;try{localStorage.setItem('fxcal',JSON.stringify(C))}catch(e){}return C}
+function calD(d,C){const q=adj(d.p,C.t,C.d),f=q.map((v,i)=>v/d.p[i]);let bt=0,ov=0;
+ const D=d.m.map((v,k)=>{const i=Math.floor(k/11),j=k%11,w=v*f[i>j?0:i==j?1:2];if(i&&j)bt+=w;if(i+j>2)ov+=w;return w});return{m:D,p:q,bt,ov}}
+function lab(){
+ const E=evalAll(),{R,n,ns}=E;
  if(!n){$('lr').innerHTML='<p>Нужно минимум 25–30 сыгранных матчей.</p>';return}
- const nm=['Частоты лиги (база)','Сила','+ форма','+ статистика','+ спецпоказатели'],bi=R.reduce((b,r,i)=>r[1]<R[b][1]?i:b,0),best=k=>Math.min(...R.map(r=>r[k]));
+ CAL=null;const C=calib(E),nm=['Частоты лиги (база)','Сила','+ форма','+ статистика','+ спецпоказатели'],bi=R.reduce((b,r,i)=>r[1]<R[b][1]?i:b,0),best=k=>Math.min(...R.map(r=>r[k]));
  $('lr').innerHTML=`<table class="t"><tr><th>Модель<th>Brier<th>LogLoss</tr>${R.map((r,i)=>`<tr><td>${nm[i]}${[0,1].map(k=>`<td${r[k]==best(k)?' style="color:var(--ac);font-weight:700"':''}>${(r[k]/n).toFixed(3)}`).join('')}`).join('')}</table>
-<p style="margin-top:10px">Проверено матчей: ${n}. Лучший по LogLoss: «${nm[bi]}». Статистика участвовала в ${ns} матчах. Каждый слой должен снижать оба числа, иначе его вес стоит уменьшить. Меньше значение — лучше.</p>
+<p style="margin-top:10px">Проверено матчей: ${n}. Лучший по LogLoss: «${nm[bi]}». Статистика участвовала в ${ns} матчах. Меньше значение — лучше.</p>
+<p style="margin-top:6px"><b>Самонастройка:</b> ${C.on?`включена. Слой «${nm[C.l+1]}», резкость ${C.t}, поправка ничьих ${C.d>=0?'+':''}${Math.round(C.d*100)}%. На отложенных 30% матчей LogLoss ${C.h0.toFixed(3)} → ${C.h1.toFixed(3)}.`:C.h1!=null?`выключена: на отложенных 30% матчей выигрыша нет (${C.h0.toFixed(3)} против ${C.h1.toFixed(3)}), работает полная формула.`:'выключена: нужно минимум 60 проверенных матчей.'}</p>
 <p class="sub" style="margin-top:6px">Цифры старых матчей ты вносишь сейчас, а тест считает их известными тогда, поэтому проверка приблизительная. Самый надёжный тест — прогнозы, записанные до матча: они хранятся в карточках с отметкой ✓ или ✗.</p>`}
 function add(m){
  const g=v=>v==null||v===''?null:Math.round(+v),ns=(o,x)=>{const r={};KS.forEach(([k])=>{const v=nul(k=='xg'&&(o||{})[k]==null?x:(o||{})[k]);if(v!=null)r[k]=v});return r};
  m={fid:m.fid||null,c:m.c||'',st:m.st||null,md:m.md||null,date:String(m.date||'').trim(),h:String(m.h||'').trim(),a:String(m.a||'').trim(),hg:g(m.hg),ag:g(m.ag),s1:ns(m.s1,m.hx),s2:ns(m.s2,m.ax),pr:m.pr||null};
+ m.se=m.se||(/^\d{4}-\d\d-\d\d$/.test(m.date)?seasonOf(m.date):'');
  if(!m.h||!m.a||m.h==m.a||!/^\d{4}-\d\d-\d\d$/.test(m.date)||(m.hg==null)!=(m.ag==null)||(m.hg!=null&&!(m.hg>=0&&m.ag>=0)))return 0;
- let i=m.fid?M.findIndex(x=>x.fid==m.fid):-1;if(i<0)i=M.findIndex(x=>x.date==m.date&&x.h==m.h&&x.a==m.a);
- if(i<0)M.push(m);else{const o=M[i];M[i]={...o,...m,fid:m.fid||o.fid,c:m.c||o.c,st:m.st||o.st,md:m.md||o.md,hg:m.hg??o.hg,ag:m.ag??o.ag,s1:{...o.s1,...m.s1},s2:{...o.s2,...m.s2},pr:m.pr||o.pr}}
+ let i=m.fid?M.findIndex(x=>x.fid==m.fid):-1;if(i<0)i=M.findIndex(x=>x.h==m.h&&x.a==m.a&&Math.abs(day(x.date)-day(m.date))<=1&&(!x.fid||!m.fid));
+ if(i<0)M.push(m);else{const o=M[i];M[i]={...o,...m,fid:m.fid||o.fid,c:m.c||o.c,se:m.se||o.se,st:m.st||o.st,md:m.md||o.md,hg:m.hg??o.hg,ag:m.ag??o.ag,s1:{...o.s1,...m.s1},s2:{...o.s2,...m.s2},pr:m.pr||o.pr}}
  return 1}
 async function load(){
  const sm=$('sm');
  try{const r=await fetch('data/matches.json?t='+Date.now());if(!r.ok)throw 0;const d=await r.json();
   for(const id in d.teams)if(d.teams[id].cr)CR[d.teams[id].n]=d.teams[id].cr;
-  d.matches.forEach(x=>add({fid:x.id,c:x.c,date:x.d,h:x.h,a:x.a,hg:x.hg,ag:x.ag,st:x.st,md:x.md}));
+  d.matches.forEach(x=>add({fid:x.id,c:x.c,date:x.d,h:x.h,a:x.a,hg:x.hg,ag:x.ag,st:x.st,md:x.md,se:x.s}));
   sm.textContent=`Данные от ${new Date(d.updated).toLocaleString('ru-RU')}: матчей ${d.matches.length}, команд ${Object.keys(d.teams).length}. Обновляются сами раз в 4 часа.`;refresh()}
  catch(e){sm.textContent='Файла data/matches.json пока нет. Добавь файлы загрузки в GitHub и запусти Actions, после этого команды и матчи появятся здесь.'}}
-function refresh(){save();list();drawTables();if(SEL>=0&&M[SEL])board()}
+function refresh(){save();const ss=[...new Set(M.map(m=>m.se))].filter(Boolean).sort().reverse();if(!ss.includes(SZ))SZ=ss[0]||'';$('sz').innerHTML=ss.map(x=>`<option${x==SZ?' selected':''}>${x}</option>`).join('');list();drawTables();if(SEL>=0&&M[SEL])board()}
 
 let LG='PL',LIM=30,LIM2=40;const CR={},REG=['REGULAR_SEASON','LEAGUE_STAGE','GROUP_STAGE'],
  cr=n=>CR[n]?`<img class="cr" src="${esc(CR[n])}" alt="" loading="lazy" onerror="this.remove()">`:'';
 function table(c){
  const R={};
- M.slice().sort(byD).forEach(m=>{if(m.c!=c||m.hg==null||(m.st&&!REG.includes(m.st)))return;
+ M.slice().sort(byD).forEach(m=>{if(m.c!=c||m.hg==null||(SZ&&m.se!=SZ)||(m.st&&!REG.includes(m.st)))return;
   [[m.h,m.hg,m.ag],[m.a,m.ag,m.hg]].forEach(([n,f,a])=>{const r=R[n]||(R[n]={n,p:0,w:0,d:0,l:0,gf:0,ga:0,pts:0,fm:[]}),k=f>a?'w':f==a?'d':'l';
    r.p++;r.gf+=f;r.ga+=a;r[k]++;r.pts+=k=='w'?3:k=='d'?1:0;r.fm.push(k)})});
  return Object.values(R).sort((x,y)=>y.pts-x.pts||(y.gf-y.ga)-(x.gf-x.ga)||y.gf-x.gf||x.n.localeCompare(y.n))}
@@ -306,10 +332,13 @@ function drawTables(){
  $('lgs').innerHTML=Object.entries(COMPS).map(([k,v])=>`<button class="${k==LG?'on':''}" onclick="LG='${k}';LIM2=40;drawTables()">${v}</button>`).join('');
  const t=table(LG);
  $('st').innerHTML=t.length?'<div class="sc"><table class="t"><tr><th>#<th>Команда<th>И<th>В-Н-П<th>±<th>О</tr>'+t.map((r,i)=>`<tr><td>${i+1}<td>${cr(r.n)}${esc(r.n)}<div>${r.fm.slice(-5).map(k=>`<i class="fs ${k}"></i>`).join('')}</div><td>${r.p}<td>${r.w}-${r.d}-${r.l}<td>${r.gf>r.ga?'+':''}${r.gf-r.ga}<td><b>${r.pts}</b>`).join('')+'</table></div><p class="sub" style="margin-top:6px">Порядок: очки, разница мячей, забитые. Таблица считается по сыгранным матчам из базы.</p>':'<p>В этой лиге пока нет сыгранных матчей.</p>';
- const rs=M.map((m,i)=>[m,i]).filter(([m])=>m.c==LG&&m.hg!=null).sort((x,y)=>byD(y[0],x[0]));
- $('rl').innerHTML=`<p class="sub" style="margin-bottom:8px">Сыграно матчей в сезоне: ${rs.length}. Нажми на матч, чтобы внести статистику.</p>`
-  +rs.slice(0,LIM2).map(([m,i])=>`<details class="card" style="padding:10px"><summary>${m.date.slice(5)} · ${cr(m.h)}${esc(m.h)} <b>${m.hg}:${m.ag}</b> ${cr(m.a)}${esc(m.a)} ${hasS(m)?'📊':''}</summary>${sform(i)}</details>`).join('')
-  +(rs.length>LIM2?'<button class="b g" style="width:100%" onclick="LIM2+=40;drawTables()">Показать ещё</button>':'')}
+ const rs=M.map((m,i)=>[m,i]).filter(([m])=>m.c==LG&&m.hg!=null&&(!SZ||m.se==SZ)),G={},RK=['PLAYOFFS','LAST_16','QUARTER_FINALS','SEMI_FINALS','FINAL'],
+  SN={PLAYOFFS:'Плей-офф',LAST_16:'1/8 финала',QUARTER_FINALS:'1/4 финала',SEMI_FINALS:'Полуфинал',FINAL:'Финал'};
+ rs.forEach(([m,i])=>{const r=RK.indexOf(m.st)+1,k=r*100+(m.md||0);(G[k]=G[k]||{r,md:m.md||0,st:m.st,a:[]}).a.push([m,i])});
+ const ks=Object.keys(G).map(Number).sort((x,y)=>y-x);
+ $('rl').innerHTML=`<p class="sub" style="margin-bottom:8px">Сезон ${SZ||'—'}: сыграно матчей ${rs.length}, туров ${ks.length}. Открой тур, потом матч, чтобы внести статистику.</p>`
+  +ks.map((k,ix)=>{const g=G[k];return`<details class="card" style="padding:10px"${ix==0?' open':''}><summary><b>${g.r?SN[g.st]+(g.md?' · '+g.md:''):g.md?'Тур '+g.md:'Без тура'}</b> <span class="sub">· матчей ${g.a.length}</span></summary>`
+   +g.a.sort((x,y)=>byD(x[0],y[0])).map(([m,i])=>`<details style="margin:8px 0 0 6px"><summary>${m.date.slice(5)} · ${cr(m.h)}${esc(m.h)} <b>${m.hg}:${m.ag}</b> ${cr(m.a)}${esc(m.a)} ${hasS(m)?'📊':''}</summary>${sform(i)}</details>`).join('')+'</details>'}).join('')}
 function charts(A,B,m){
  const nn=[A,B].map(X=>six(X).length);
  if(nn.some(n=>n<MINN))return`<h2>Диаграммы</h2><div class="card"><p>Диаграммы откроются, когда у обеих команд будет по ${MINN} матчей со статистикой. Сейчас: ${esc(m.h)} ${nn[0]}, ${esc(m.a)} ${nn[1]}. Открой последние матчи ниже и внеси цифры.</p></div>`;
@@ -325,7 +354,7 @@ function charts(A,B,m){
  return`<h2>Диаграммы</h2><div class="card"><div style="display:flex;justify-content:space-between"><b style="color:var(--h)">${esc(m.h)}</b><b style="color:var(--a)">${esc(m.a)}</b></div>${bars}<p class="sub">Средние за последние матчи со статистикой.</p></div><div class="card">${tr(A,m.h,'#6cc4ff')}</div><div class="card">${tr(B,m.a,'#ff9159')}</div>`}
 function go(t){document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='teams')drawTeams();if(t=='tables')drawTables();scrollTo(0,0)}
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{go(b.dataset.t);if(b.dataset.t=='board')board()});
-$('ly').onchange=()=>board();$('tq').oninput=drawTeams;$('fk').onchange=$('fl').onchange=()=>{LIM=30;list()};$('fq').oninput=()=>{LIM=30;list()};$('syn').onclick=load;
+$('sz').onchange=()=>{SZ=$('sz').value;LIM=30;list();drawTables()};$('ly').onchange=()=>board();$('tq').oninput=drawTeams;$('fk').onchange=$('fl').onchange=()=>{LIM=30;list()};$('fq').oninput=()=>{LIM=30;list()};$('syn').onclick=load;
 $('go').onclick=()=>{$('lr').textContent='Считаю…';setTimeout(lab,30)};
 $('imp').onclick=()=>{const s=$('bulk').value.trim();let k=0;
  if(s[0]=='['){try{JSON.parse(s).forEach(m=>k+=add(m))}catch(e){}}
