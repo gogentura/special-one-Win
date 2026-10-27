@@ -23,6 +23,12 @@ try:
 except Exception:
     old = {"teams": {}, "matches": []}
 
+def season(x):
+    d = (x.get("season") or {}).get("startDate") or x.get("utcDate") or x["d"]
+    y = int(d[:4]) - (1 if int(d[5:7]) < 7 else 0)
+    return f"{y}/{str(y + 1)[2:]}"
+
+
 raw, failed = [], []
 for i, code in enumerate(COMPS):
     if i:
@@ -56,13 +62,17 @@ for code, x in raw:
     if not fin and x.get("status") not in ("SCHEDULED", "TIMED"):
         continue
     matches.append({
-        "id": x["id"], "c": code, "d": x["utcDate"][:10], "md": x.get("matchday"), "st": x.get("stage"),
+        "id": x["id"], "c": code, "d": x["utcDate"][:10], "s": season(x), "md": x.get("matchday"), "st": x.get("stage"),
         "h": teams[str(hi)]["n"], "a": teams[str(ai)]["n"],
         "hg": ft["home"] if fin else None, "ag": ft["away"] if fin else None,
     })
+# прошлые сезоны и лиги, которые не загрузились, остаются в файле
+new_ids = {m["id"] for m in matches}
+new_seasons = {(m["c"], m["s"]) for m in matches}
 for m in old.get("matches", []):
-    if m.get("c") in failed:
-        matches.append(m)  # если лига не загрузилась, оставляем прежние данные
+    m["s"] = m.get("s") or season({"d": m["d"]})
+    if m["id"] not in new_ids and (m["c"] in failed or (m["c"], m["s"]) not in new_seasons):
+        matches.append(m)
 matches.sort(key=lambda m: (m["d"], m["id"]))
 
 if old.get("matches") == matches and old.get("teams") == teams:
