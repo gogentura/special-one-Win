@@ -68,7 +68,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 
 <section id="board" class="tab">
 <h2>Прогноз матча</h2>
-<div class="row"><select id="ly" aria-label="Слои расчёта"><option value="auto" selected>Слои: авто (самонастройка)</option><option value="0">Слои: только сила</option><option value="1">Слои: + форма</option><option value="2">Слои: + статистика</option><option value="3">Слои: полная формула</option></select></div>
+<div class="row"><select id="ly" aria-label="Слои расчёта"><option value="auto" selected>Слои: авто (самонастройка)</option><option value="4">Слои: полная формула</option><option value="0">Слои: только сила</option><option value="1">Слои: + форма</option><option value="2">Слои: + угрозы</option><option value="3">Слои: + контроль</option><option value="5">Слои: + дисциплина (тест)</option></select></div>
 <div id="out"></div>
 </section>
 
@@ -94,23 +94,34 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <div id="lr" style="margin-top:12px"></div>
 </div>
 <h2>Как считает FIELD-X</h2>
-<div class="card"><pre>0. Сила (учится после каждого матча)
+<div class="card"><pre>Версия формулы: FX-2.0
+
+0. Сила (учится после каждого матча)
    λ_дом = exp(μ + H + атака_дом − защита_гость)
    λ_гость = exp(μ + атака_гость − защита_дом)
-   параметр += η · (факт − λ);  факт = ½ голы + ½ xG
+   параметр += η · (факт − λ);  факт = ½ голы + ½ xG, если xG введён
 
-1. Форма: последние 5 матчей
-   невязка = голы − ожидание модели, веса 5-4-3-2-1
+1. Форма: последние 5 матчей, веса 5-4-3-2-1
    λ ← λ · exp(0,12 · (атака + слабость обороны соперника)), не больше ±15%
 
-2. Статистика: с 5 матчей у обеих команд
-   профиль «за» и «против»: xG, удары в створ, удары, угловые, владение, точность пасов
-   сжат к среднему лиги; λ ← (1−ω)·λ + ω·λ_стат, ω от 3% до 30%
+2. Угрозы: xG 0,5 · створ 0,2 · удары 0,2 · угловые 0,1
+   z = (среднее команды − среднее лиги) / разброс лиги
+   g = tanh(z/2), от −1 до +1; свежие матчи весомее (последние 8)
+   Δ = 0,30 · (свои угрозы + угрозы, допущенные соперником)
+   доверие n/(n+4); от 5 матчей со статистикой, у каждой команды отдельно
 
-3. Спецпоказатели: суммарно не больше ±10%
+3. Контроль: владение 0,6 · точность пасов 0,4
+   Δ = 0,08 · (контроль команды − контроль соперника) / 2
+   слои 2 и 3 вместе меняют λ не больше чем на ±25%
 
-4. Счёт: общий темп матча τ ~ Gamma(6), 30 значений τ вместо симуляции.
-   Голы команд связаны, без отдельных поправок на низкие счета.</pre></div>
+4. Спецпоказатели: не больше ±10%
+
+5. Дисциплина (тест): фолы, жёлтые, красные, отборы
+   только справка и теневой слой: в расчёт входит, лишь если проверка докажет пользу
+
+6. Счёт: общий темп матча τ ~ Gamma(6), 30 значений τ вместо симуляции.
+   Если значения нет, оно остаётся пустым и в слое не участвует.
+   Если данных мало, слой равен нулю, и прогноз опирается на силу и форму.</pre></div>
 <div class="card">
 <p><b>Гладиатор</b>: 3 и больше побед подряд, усиливает атаку.</p>
 <p><b>Сухарь</b>: 2 и больше «сухих» матчей из 5, усиливает оборону.</p>
@@ -119,11 +130,12 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <p><b>Пустое владение</b>: владение от 55% при xG ниже нормы на 10%, ослабляет атаку.</p>
 <p><b>Грубая сила</b>: фолов и карточек на 25% больше нормы, ослабляет оборону.</p>
 <p><b>Реализация</b> и <b>Дыра</b>: голы к xG и пропущенные к xGA. Только показывают, «везёт» ли команде, в расчёт не входят.</p>
-<p class="sub" style="margin-top:8px">Все лиги и Лига чемпионов считаются в одной базе: форма и сила берутся из всех матчей команды. Самонастройка: проверка сама выбирает лучший слой и подгоняет резкость вероятностей и долю ничьих. Она включается, только если улучшение подтверждается на отложенных 30% матчей. Таблицы и списки идут по сезонам, а модель учится на всех сезонах сразу. Отборы пока только хранятся. Пороги стартовые, их проверяет вкладка «Проверка».</p>
+<p class="sub" style="margin-top:8px">Все лиги и Лига чемпионов считаются в одной базе: форма и сила берутся из всех матчей команды. Самонастройка: проверка сама выбирает лучший из слоёв и подгоняет резкость вероятностей и долю ничьих. Она включается, только если улучшение подтверждается на отложенных 30% матчей. Таблицы и списки идут по сезонам, а модель учится на всех сезонах сразу. Отборы пока только хранятся. Пороги стартовые, их проверяет вкладка «Проверка».</p>
 </div>
 </section>
 </main>
 <script>
+
 let CAL=null,SZ='';try{CAL=JSON.parse(localStorage.getItem('fxcal')||'null')}catch(e){}
 const seasonOf=d=>{const y=+d.slice(0,4)-(+d.slice(5,7)<7?1:0);return y+'/'+String(y+1).slice(2)};
 
@@ -147,12 +159,18 @@ const save=()=>{try{localStorage.setItem('fieldx',JSON.stringify(M))}catch(e){}}
 /* ===== модель ===== */
 function relax(x,t){if(x.t!=null){const f=Math.exp(-Math.max(0,t-x.t)/P.T);x.a*=f;x.d*=f}x.t=t}
 const lam=(L,A,B)=>[Math.exp(L.mu+L.h+A.a-B.d),Math.exp(L.mu+B.a-A.d)],hasE=e=>e.f&&Object.keys(e.f).length>0,
- five=X=>X.E.slice(-5).reverse(),six=X=>X.E.filter(hasE).slice(-6),SA={xg:.45,sot:.25,sh:.12,co:.05,pos:.08,pa:.05},SD={xg:.55,sot:.3,sh:.15};
-function pf(L,X,Q,side){
- const E=six(X);let s=0,z=0,n=0;
- for(const k in Q){const G=L.g[k],v=E.map(e=>(e[side]||{})[k]).filter(x=>x!=null);if(!G||!(G.s>0)||v.length<MINN)continue;
-  const g=G.s/G.n;s+=Q[k]*Math.log((v.length*mean(v)+3*g)/(v.length+3)/g);z+=Q[k];n=Math.max(n,v.length)}
- return z?[s/z,n]:[0,0]}
+ five=X=>X.E.slice(-5).reverse(),six=X=>X.E.filter(hasE).slice(-6);
+const VER='FX-2.0',BT=.3,BC=.08,BD=-.04,FULL=4,TB={xg:.5,sot:.2,sh:.2,co:.1},TA={xg:.6,sot:.25,sh:.15},CB={pos:.6,pa:.4},DB={fo:.35,yc:.3,rc:.15,tk:.2},
+ ave=(X,k,s='f')=>{const v=six(X).map(e=>(e[s]||{})[k]).filter(z=>z!=null);return v.length?mean(v):null},
+ dgs=X=>[['fo','фолы'],['yc','жёлтые'],['rc','красные'],['tk','отборы']].map(([k,t])=>{const v=ave(X,k);return v==null?null:t+' '+v.toFixed(1)}).filter(Boolean).join(' · ');
+function blk(L,X,Q,side){
+ const E=X.E.filter(hasE).slice(-8);let s=0,wa=0,wt=0,n=0;
+ for(const k in Q){wt+=Q[k];const G=L.g[k],v=E.map(e=>(e[side]||{})[k]).filter(x=>x!=null);
+  if(!G||G.n<20||v.length<MINN)continue;
+  const m=G.s/G.n,sd=Math.sqrt(Math.max(G.q/G.n-m*m,0));if(sd<1e-6)continue;
+  let a=0,b=0;v.forEach((x,i)=>{a+=(i+1)*x;b+=i+1});
+  s+=Q[k]*Math.tanh((a/b-m)/sd/2);wa+=Q[k];n=Math.max(n,v.length)}
+ return wa?[s/wa*Math.sqrt(wa/wt),n/(n+4)]:[0,0]}
 function spec(L,X){
  const e=five(X),E=six(X),o=[],lg=k=>L.g[k]&&L.g[k].s>0?L.g[k].s/L.g[k].n:null,
  av=(k,s)=>{const v=E.map(x=>(x[s]||{})[k]).filter(z=>z!=null);return v.length>=3?mean(v):null},
@@ -178,12 +196,15 @@ function lay(L,A,B){
  const[l1,l2]=lam(L,A,B),e1=five(A),e2=five(B),k=e=>e.length/(e.length+2),
   fa=wm(e1.map(e=>e.res),W5)*k(e1),db=wm(e2.map(e=>e.rc),W5)*k(e2),fb=wm(e2.map(e=>e.res),W5)*k(e2),da=wm(e1.map(e=>e.rc),W5)*k(e1),
   x1=l1*Math.exp(cl(.12*(fa+db),-.15,.15)),x2=l2*Math.exp(cl(.12*(fb+da),-.15,.15)),
-  [ra,na]=pf(L,A,SA,'f'),[rd,nd]=pf(L,B,SD,'c'),[rb,nb]=pf(L,B,SA,'f'),[rc,nc]=pf(L,A,SD,'c'),n=Math.min(na,nd,nb,nc),
-  om=n>=MINN?.3*Math.min(1,(n-MINN+1)/10):0,
-  y1=(1-om)*x1+om*Math.exp(L.mu+L.h+ra+rd),y2=(1-om)*x2+om*Math.exp(L.mu+rb+rc),
+  [tA,nA]=blk(L,A,TB,'f'),[tB,nB]=blk(L,B,TB,'f'),[uA,mA]=blk(L,A,TA,'c'),[uB,mB]=blk(L,B,TA,'c'),
+  [kA,qA]=blk(L,A,CB,'f'),[kB,qB]=blk(L,B,CB,'f'),[sA,rA]=blk(L,A,DB,'f'),[sB,rB]=blk(L,B,DB,'f'),
+  th1=BT*(nA*tA+mB*uB),th2=BT*(nB*tB+mA*uA),ct=BC*.5*(qA*kA-qB*kB),
+  y1=x1*Math.exp(cl(th1,-.25,.25)),y2=x2*Math.exp(cl(th2,-.25,.25)),
+  w1=x1*Math.exp(cl(th1+ct,-.25,.25)),w2=x2*Math.exp(cl(th2-ct,-.25,.25)),
   pA=spec(L,A),pB=spec(L,B),sm=(p,t)=>p.reduce((s,x)=>s+(x.kind==t&&x.s!=null?x.s:0),0),
-  z1=y1*Math.exp(cl(.05*(sm(pA,'att')-sm(pB,'def')),-.1,.1)),z2=y2*Math.exp(cl(.05*(sm(pB,'att')-sm(pA,'def')),-.1,.1));
- return{l:[[l1,l2],[x1,x2],[y1,y2],[z1,z2]],om,sp:[pA,pB],fm:[e1,e2]}}
+  z1=w1*Math.exp(cl(.05*(sm(pA,'att')-sm(pB,'def')),-.1,.1)),z2=w2*Math.exp(cl(.05*(sm(pB,'att')-sm(pA,'def')),-.1,.1)),
+  v1=z1*Math.exp(cl(BD*rA*sA,-.1,.1)),v2=z2*Math.exp(cl(BD*rB*sB,-.1,.1));
+ return{l:[[l1,l2],[x1,x2],[y1,y2],[w1,w2],[z1,z2],[v1,v2]],om:(nA+nB+mA+mB)/4,sp:[pA,pB],fm:[e1,e2],bk:[{t:tA,c:kA,n:nA},{t:tB,c:kB,n:nB}]}}
 function run(ms,cb){
  const L={mu:Math.log(1.35),h:.2,g:{}},T={},g=n=>T[n]||(T[n]={a:0,d:0,n:0,t:null,E:[]});
  ms.filter(m=>m.hg!=null).sort(byD).forEach(m=>{
@@ -195,7 +216,7 @@ function run(ms,cb){
   L.h=cl(L.h+.01*eh,0,.5);L.mu+=.008*(eh+ea)/2;A.n++;B.n++;
   A.E.push({m,d:m.date,o:m.a,hm:1,gf:m.hg,ga:m.ag,res:eh,rc:ea,f:m.s1,c:m.s2});
   B.E.push({m,d:m.date,o:m.h,hm:0,gf:m.ag,ga:m.hg,res:ea,rc:eh,f:m.s2,c:m.s1});
-  KS.forEach(([k])=>[m.s1,m.s2].forEach(o=>{const v=o&&o[k];if(v!=null){const G=L.g[k]||(L.g[k]={s:0,n:0});G.s+=v;G.n++}}))});
+  KS.forEach(([k])=>[m.s1,m.s2].forEach(o=>{const v=o&&o[k];if(v!=null){const G=L.g[k]||(L.g[k]={s:0,n:0,q:0});G.s+=v;G.n++;G.q+=v*v}}))});
  return{L,T}}
 const TG=[],TW=[];(()=>{let z=0;for(let i=1;i<=30;i++){const t=i/10,w=t**5*Math.exp(-6*t);TG.push(t);TW.push(w);z+=w}TW.forEach((w,i)=>TW[i]=w/z)})();
 const pm=m=>{const r=[Math.exp(-m)];for(let i=1;i<11;i++)r.push(r[i-1]*m/i);return r};
@@ -250,18 +271,18 @@ function board(w){
  if(!m){o.innerHTML='<div class="card"><p>Открой будущий матч на вкладке «Матчи» и нажми «Прогноз».</p></div>';return}
  const{L,T}=run(M),bl=n=>T[n]||{a:0,d:0,n:0,t:null,E:[]},A=bl(m.h),B=bl(m.a),t=day(m.date);relax(A,t);relax(B,t);
  const y=lay(L,A,B),md=$('ly').value,C=md=='auto'?calib():null,ly=C?C.l:+md,[lh,la]=y.l[ly],d0=dist(lh,la),d=C&&C.on?calD(d0,C):d0,p=d.p,top=[];
- if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10)};save();list()}
+ if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10),v:VER,par:{BT,BC,BD,w:P.w},cal:C?{on:C.on,t:C.t,d:C.d}:null};save();list()}
  for(let i=0;i<11;i++)for(let j=0;j<11;j++)top.push([i,j,d.m[i*11+j]]);top.sort((a,b)=>b[2]-a[2]);
- const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=['Сила','+ форма','+ статистика','+ спецпоказатели'],mt=C?(C.on?`авто: слой «${nm[ly]}», калибровка включена`:'авто: полная формула, калибровка пока выключена'):'слой выбран вручную',
+ const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=['Сила','+ форма','+ угрозы','+ контроль','+ спецпоказатели','+ дисциплина (тест)'],nx=[A,B].map(X=>X.E.filter(e=>e.f&&e.f.xg!=null).length),mt=C?(C.on?`авто: слой «${nm[ly]}», калибровка включена`:'авто: полная формула, калибровка пока выключена'):'слой выбран вручную',
  col=(X,n,i)=>{const sp=y.sp[i],cp=comp(sp);
   return`<div class="card"><h2 style="margin:0 0 4px">${esc(n)}</h2><p class="sub">Форма (от старых к новым): <b style="color:var(--tx)">${y.fm[i].slice().reverse().map(ltr).join('')||'нет данных'}</b>${cp!=null?' · сводка спецпоказателей '+f2(cp):''}</p>
 <div>${sp.filter(x=>x.s!=null&&Math.abs(x.s)>=.05).map(x=>`<span class="ch" style="font-size:14px;color:${x.s>0?'var(--ac)':'var(--a)'}" title="${esc(x.tx)}">${x.nm} ${f2(x.s)}</span>`).join('')||'<span class="sub">спецпоказатели не обнаружены</span>'}</div>
-<p class="sub" style="margin:8px 0 4px">Последние матчи: открой и внеси статистику</p>`
+<p class="sub" style="margin:6px 0">Угрозы <b style="color:var(--tx)">${y.bk[i].n?f2(y.bk[i].t):'копится'}</b> · контроль <b style="color:var(--tx)">${y.bk[i].n?f2(y.bk[i].c):'копится'}</b></p><p class="sub" style="margin:6px 0">Дисциплина (справка): ${dgs(X)||'нет данных'}</p><p class="sub" style="margin:8px 0 4px">Последние матчи: открой и внеси статистику</p>`
   +X.E.slice(-6).reverse().map(x=>`<details><summary>${ltr(x)} · ${x.d.slice(5)} ${x.hm?'дома':'в гостях'}, ${esc(x.o)} ${x.gf}:${x.ga} ${hasS(x.m)?'📊':''}</summary>${sform(M.indexOf(x.m))}</details>`).join('')+'</div>'};
  o.innerHTML=`<div class="card" style="padding:8px"><p class="sub" style="padding:2px 6px">${m.date} · ${COMPS[m.c]||''}${m.hg!=null?' · сыграно '+m.hg+':'+m.ag:''}</p>${pitch(m.h,m.a,lh,la,lh/(lh+la))}</div>
 <div class="card"><div class="pb"><div style="width:${p[0]*100}%;background:var(--h)">${pc(p[0])}</div><div style="width:${p[1]*100}%;background:#d9e2dc">${pc(p[1])}</div><div style="width:${p[2]*100}%;background:var(--a)">${pc(p[2])}</div></div>
 <p class="sub" style="display:flex;justify-content:space-between;margin-top:4px"><span>победа: ${esc(m.h)}</span><span>ничья</span><span>победа: ${esc(m.a)}</span></p></div>
-<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>вес статистики${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}.</p></div>
+<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>доверие к статистике${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}. Матчей с xG: ${esc(m.h)} ${nx[0]}, ${esc(m.a)} ${nx[1]}${nx[0]<MINN||nx[1]<MINN?'. Пока основа прогноза идёт по голам, статистика подключается с '+MINN+' матчей':''}. Формула ${VER}.</p></div>
 <div>${top.slice(0,6).map(c=>`<span class="ch">${c[0]}:${c[1]}<i>${(c[2]*100).toFixed(1)}%</i></span>`).join('')}</div>
 <h2>Как менялась λ по слоям</h2><div class="card"><table class="t"><tr><th>Слой<th>Хозяева<th>Гости</tr>${y.l.map((l,i)=>`<tr${i==ly?' style="color:var(--ac);font-weight:600"':''}><td>${nm[i]}<td>${l[0].toFixed(2)}<td>${l[1].toFixed(2)}`).join('')}</table></div>
 ${charts(A,B,m)}${col(A,m.h,0)}${col(B,m.a,1)}
@@ -275,34 +296,35 @@ function drawTeams(){
  $('tt').innerHTML='<table class="t"><tr><th>Команда<th>Сила<th>Форма<th>Стат.</tr>'+rows.map(([n,x])=>{const s=x.a+x.d,k=six(x).length,sp=spec(L,x).filter(z=>z.s!=null&&Math.abs(z.s)>=.05);
   return`<tr><td>${cr(n)}${esc(n)}<div class="sub">${sp.map(z=>z.nm+' '+f2(z.s)).join(' · ')}</div><td style="width:26%"><div class="bar" style="width:${cl(50+50*s/mx,4,100)}%"></div>${f2(s)}<td>${five(x).reverse().map(e=>e.gf>e.ga?'В':e.gf==e.ga?'Н':'П').join('')}<td>${k}${k<MINN?' / '+MINN:' ✓'}`}).join('')+'</table>'}
 function evalAll(){
- const R=[0,1,2,3,4].map(()=>[0,0]),c=[0,0,0],rec=[];let n=0,tot=0,ns=0;
+ const R=Array.from({length:7},()=>[0,0]),c=[0,0,0],rec=[];let n=0,tot=0,ns=0,lv=null,lp=null;
  run(M,(m,y,A,B)=>{tot++;const o=oc(m);
-  if(tot>20&&A.n>=2&&B.n>=2){const ps=y.l.map(l=>dist(l[0],l[1]).p);
+  if(tot>20&&A.n>=2&&B.n>=2){const ps=y.l.map(l=>{if(lv&&lv[0]==l[0]&&lv[1]==l[1])return lp;lv=l;return lp=dist(l[0],l[1]).p});
    [c.map(v=>(v+1)/(tot+2)),...ps].forEach((p,i)=>{const s=sc(p,o);R[i][0]+=s[0];R[i][1]+=s[1]});rec.push({o,ps});n++;if(y.om)ns++}
   c[o]++});
  return{R,n,ns,rec}}
 const adj=(p,t,d)=>{const q=p.map(v=>Math.pow(Math.max(v,1e-6),t));q[1]*=1+d;const z=q[0]+q[1]+q[2];return q.map(v=>v/z)},
  ll=(rec,l,t,d)=>rec.reduce((s,r)=>s-Math.log(Math.max(adj(r.ps[l],t,d)[r.o],1e-4)),0)/rec.length;
-function fit(rec){let b={l:3,t:1,d:0,v:ll(rec,3,1,0)};
- for(let l=0;l<4;l++)for(const t of[.8,.9,1,1.1,1.2,1.3])for(const d of[-.1,0,.1,.2,.3]){const v=ll(rec,l,t,d);if(v<b.v-1e-9)b={l,t,d,v}}
+function fit(rec){let b={l:FULL,t:1,d:0,v:ll(rec,FULL,1,0)};
+ for(let l=0;l<6;l++)for(const t of[.8,.9,1,1.1,1.2,1.3])for(const d of[-.1,0,.1,.2,.3]){const v=ll(rec,l,t,d);if(v<b.v-1e-9)b={l,t,d,v}}
  return b}
 function calib(E0){
- const sig=M.filter(m=>m.hg!=null).length+'|'+M.filter(hasS).length;
+ const sig=VER+'|'+M.filter(m=>m.hg!=null).length+'|'+M.filter(hasS).length;
  if(!E0&&CAL&&CAL.sig==sig)return CAL;
- const E=E0||evalAll(),n=E.n;let C={sig,on:false,l:3,t:1,d:0,n};
- if(n>=60){const k=Math.floor(n*.7),f=fit(E.rec.slice(0,k)),ho=E.rec.slice(k),h0=ll(ho,3,1,0),h1=ll(ho,f.l,f.t,f.d);
-  C=h1<h0-.004?{...fit(E.rec),sig,on:true,n,h0,h1}:{...C,h0,h1}}
+ const E=E0||evalAll(),n=E.n;let C={sig,on:false,l:FULL,t:1,d:0,n};
+ if(n>=90){const cs=[.5,.67,.83].map(f=>Math.floor(n*f)),en=[cs[1],cs[2],n],
+   g=cs.map((c,i)=>{const f=fit(E.rec.slice(0,c)),ho=E.rec.slice(c,en[i]);return ll(ho,FULL,1,0)-ll(ho,f.l,f.t,f.d)}),gm=mean(g),pos=g.filter(v=>v>0).length;
+  C=gm>.004&&pos>=2?{...fit(E.rec),sig,on:true,n,gm,pos}:{...C,gm,pos}}
  CAL=C;try{localStorage.setItem('fxcal',JSON.stringify(C))}catch(e){}return C}
 function calD(d,C){const q=adj(d.p,C.t,C.d),f=q.map((v,i)=>v/d.p[i]);let bt=0,ov=0;
  const D=d.m.map((v,k)=>{const i=Math.floor(k/11),j=k%11,w=v*f[i>j?0:i==j?1:2];if(i&&j)bt+=w;if(i+j>2)ov+=w;return w});return{m:D,p:q,bt,ov}}
 function lab(){
  const E=evalAll(),{R,n,ns}=E;
  if(!n){$('lr').innerHTML='<p>Нужно минимум 25–30 сыгранных матчей.</p>';return}
- CAL=null;const C=calib(E),nm=['Частоты лиги (база)','Сила','+ форма','+ статистика','+ спецпоказатели'],bi=R.reduce((b,r,i)=>r[1]<R[b][1]?i:b,0),best=k=>Math.min(...R.map(r=>r[k]));
+ CAL=null;const C=calib(E),nm=['Частоты лиги (база)','Сила','+ форма','+ угрозы','+ контроль','+ спецпоказатели (полная)','+ дисциплина (тест)'],bi=R.reduce((b,r,i)=>r[1]<R[b][1]?i:b,0),best=k=>Math.min(...R.map(r=>r[k]));
  $('lr').innerHTML=`<table class="t"><tr><th>Модель<th>Brier<th>LogLoss</tr>${R.map((r,i)=>`<tr><td>${nm[i]}${[0,1].map(k=>`<td${r[k]==best(k)?' style="color:var(--ac);font-weight:700"':''}>${(r[k]/n).toFixed(3)}`).join('')}`).join('')}</table>
-<p style="margin-top:10px">Проверено матчей: ${n}. Лучший по LogLoss: «${nm[bi]}». Статистика участвовала в ${ns} матчах. Меньше значение — лучше.</p>
-<p style="margin-top:6px"><b>Самонастройка:</b> ${C.on?`включена. Слой «${nm[C.l+1]}», резкость ${C.t}, поправка ничьих ${C.d>=0?'+':''}${Math.round(C.d*100)}%. На отложенных 30% матчей LogLoss ${C.h0.toFixed(3)} → ${C.h1.toFixed(3)}.`:C.h1!=null?`выключена: на отложенных 30% матчей выигрыша нет (${C.h0.toFixed(3)} против ${C.h1.toFixed(3)}), работает полная формула.`:'выключена: нужно минимум 60 проверенных матчей.'}</p>
-<p class="sub" style="margin-top:6px">Цифры старых матчей ты вносишь сейчас, а тест считает их известными тогда, поэтому проверка приблизительная. Самый надёжный тест — прогнозы, записанные до матча: они хранятся в карточках с отметкой ✓ или ✗.</p>`}
+<p style="margin-top:10px">Проверено матчей: ${n}. Лучший по LogLoss: «${nm[bi]}». Статистика участвовала в ${ns} матчах. Меньше значение — лучше. Слой, который не улучшает оба числа, стоит оставлять выключенным.</p>
+<p style="margin-top:6px"><b>Самонастройка:</b> ${C.on?`включена. Слой «${nm[C.l+1]}», резкость ${C.t}, поправка ничьих ${C.d>=0?'+':''}${Math.round(C.d*100)}%. Выигрыш подтверждён на ${C.pos} из 3 отрезков, средний выигрыш LogLoss ${C.gm.toFixed(3)}.`:C.gm!=null?`выключена: улучшение не подтвердилось (средний выигрыш ${C.gm.toFixed(3)}, отрезков с выигрышем ${C.pos} из 3). Работает полная формула.`:'выключена: нужно минимум 90 проверенных матчей.'}</p>
+<p class="sub" style="margin-top:6px">Формула ${VER}. Цифры старых матчей ты вносишь сейчас, а тест считает их известными тогда, поэтому проверка приблизительная. Самый надёжный тест — прогнозы, записанные до матча: они хранятся в карточках с отметкой ✓ или ✗.</p>`}
 function add(m){
  const g=v=>v==null||v===''?null:Math.round(+v),ns=(o,x)=>{const r={};KS.forEach(([k])=>{const v=nul(k=='xg'&&(o||{})[k]==null?x:(o||{})[k]);if(v!=null)r[k]=v});return r};
  m={fid:m.fid||null,c:m.c||'',st:m.st||null,md:m.md||null,date:String(m.date||'').trim(),h:String(m.h||'').trim(),a:String(m.a||'').trim(),hg:g(m.hg),ag:g(m.ag),s1:ns(m.s1,m.hx),s2:ns(m.s2,m.ax),pr:m.pr||null};
