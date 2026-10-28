@@ -58,6 +58,22 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <input id="fq" placeholder="Поиск по команде" style="margin-bottom:8px">
 <p class="sub" id="cnt" style="margin-bottom:8px"></p>
 <div id="ml"></div>
+<h2>Автосохранение в репозиторий</h2>
+<div class="card">
+<p class="sub" id="gs" style="margin-bottom:8px"></p>
+<details style="margin-bottom:10px"><summary>Как получить токен</summary>
+<ol style="padding-left:20px;margin-top:8px">
+<li>Открой github.com в браузере телефона (лучше версия для компьютера) и войди.</li>
+<li>Фото профиля → Settings → слева внизу Developer settings.</li>
+<li>Personal access tokens → Fine-grained tokens → Generate new token.</li>
+<li>Имя любое, срок самый длинный. Repository access: Only select repositories, выбери репозиторий приложения.</li>
+<li>Repository permissions → Contents → Read and write. Больше ничего не нужно.</li>
+<li>Generate token. Скопируй токен (начинается с github_pat_, показывается один раз) и вставь ниже.</li>
+</ol></details>
+<input id="ghr" placeholder="владелец/репозиторий" style="margin-bottom:8px">
+<input type="password" id="ght" placeholder="Токен github_pat_…" autocomplete="off" style="margin-bottom:8px">
+<div class="row"><button class="b" id="ghon">Включить</button><button class="b g" id="ghnow">Сохранить сейчас</button><button class="b g" id="ghoff">Выключить</button></div>
+</div>
 <h2>Импорт и экспорт</h2>
 <div class="card">
 <textarea id="bulk" rows="3" placeholder="Строки: дата,хозяева,гости,голы,голы[,xG,xG] или JSON из экспорта"></textarea>
@@ -68,9 +84,12 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </section>
 
 <section id="board" class="tab">
+<div id="jr"></div>
+<div id="bw" style="display:none">
 <h2>Прогноз матча</h2>
 <div class="row"><select id="ly" aria-label="Слои расчёта"><option value="auto" selected>Слои: авто (самонастройка)</option><option value="4">Слои: полная формула</option><option value="0">Слои: только сила</option><option value="1">Слои: + форма</option><option value="2">Слои: + угрозы</option><option value="3">Слои: + контроль</option><option value="5">Слои: + дисциплина (тест)</option></select></div>
 <div id="out"></div>
+</div>
 </section>
 
 <section id="tables" class="tab">
@@ -136,6 +155,9 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </section>
 </main>
 <script>
+let TAB='matches',SUBV='j',GH={tk:'',repo:'',ready:false,sha:null,busy:false},GT=null,LASTH='';
+try{const g=JSON.parse(localStorage.getItem('fxgh')||'null');if(g)GH={...GH,tk:g.tk||'',repo:g.repo||''}}catch(e){}
+
 
 
 
@@ -159,7 +181,7 @@ let SEL=-1,M=[];try{M=JSON.parse(localStorage.getItem('fieldx')||'[]')}catch(e){
 M.forEach(m=>{m.s1=m.s1||{};m.s2=m.s2||{};if(m.hx!=null)m.s1.xg=m.hx;if(m.ax!=null)m.s2.xg=m.ax;delete m.hx;delete m.ax;delete m.s1.sv;delete m.s2.sv;m.c=m.c||''});
 const DEMO=['Орлы','Волки','Львы','Быки','Соколы','Акулы','Тигры','Кобры'];M=M.filter(m=>!DEMO.includes(m.h)&&!DEMO.includes(m.a));
 {const o=M;M=[];o.forEach(x=>add(x))}
-const save=()=>{try{localStorage.setItem('fieldx',JSON.stringify(M))}catch(e){}},sv=(m,s,k)=>{const v=(s?m.s2:m.s1)?.[k];return v==null?null:v};
+const save=()=>{try{localStorage.setItem('fieldx',JSON.stringify(M))}catch(e){}gsched()},sv=(m,s,k)=>{const v=(s?m.s2:m.s1)?.[k];return v==null?null:v};
 
 /* ===== модель ===== */
 function relax(x,t){if(x.t!=null){const f=Math.exp(-Math.max(0,t-x.t)/P.T);x.a*=f;x.d*=f}x.t=t}
@@ -270,14 +292,15 @@ function list(){
  $('cnt').textContent=`Найдено: ${rows.length}. В базе матчей: ${M.length}, со статистикой: ${M.filter(hasS).length}. Профиль команды включается с ${MINN} матчей со статистикой.`;
  $('ml').innerHTML=rows.slice(0,LIM).map(([m,i])=>card(m,i)).join('')||'<div class="card"><p>Здесь пусто. Если данных совсем нет, проверь, что в репозитории есть файл data/matches.json.</p></div>'
   +(rows.length>LIM?'<button class="b g" style="width:100%" onclick="LIM+=30;list()">Показать ещё</button>':'')}
-function fc(i){SEL=i;go('board');board(1)}
+function fc(i){SEL=i;SUBV='m';go('board');showB(1)}
 function delM(i){const m=M[i];if(!m||!confirm(`Удалить матч «${m.h} — ${m.a}» из базы${m.hg!=null||hasS(m)||m.pr?' вместе со статистикой и прогнозом':''}?`))return;
  if(m.fid){DELS.push(m.fid);try{localStorage.setItem('fxdel',JSON.stringify(DELS))}catch(e){}}
  M.splice(i,1);if(SEL==i)SEL=-1;else if(SEL>i)SEL--;refresh();if(SEL<0)go('matches')}
-function delP(){const m=M[SEL];if(!m||!m.pr)return;delete m.pr;save();board();list()}
+function delP(){const m=M[SEL];if(!m||!m.pr)return;delete m.pr;save();list();SUBV='j';showB()}
 function board(w){
  const o=$('out'),m=M[SEL];
- if(!m){o.innerHTML='<div class="card"><p>Открой будущий матч на вкладке «Матчи» и нажми «Прогноз».</p></div>';return}
+ if(!m){SUBV='j';showB();return}
+ if(m.hg!=null){review(m);return}
  const{L,T}=run(M),bl=n=>T[n]||{a:0,d:0,n:0,t:null,E:[]},A=bl(m.h),B=bl(m.a),t=day(m.date);relax(A,t);relax(B,t);
  const y=lay(L,A,B),md=$('ly').value,C=md=='auto'?calib():null,ly=C?C.l:+md,[lh,la]=y.l[ly],d0=dist(lh,la),d=C&&C.on?calD(d0,C):d0,p=d.p,top=[];
  if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10),v:VER,par:{BT,BC,BD,w:P.w},cal:C?{on:C.on,t:C.t,d:C.d}:null};save();list()}
@@ -288,7 +311,7 @@ function board(w){
 <div>${sp.filter(x=>x.s!=null&&Math.abs(x.s)>=.05).map(x=>`<span class="ch" style="font-size:14px;color:${x.s>0?'var(--ac)':'var(--a)'}" title="${esc(x.tx)}">${x.nm} ${f2(x.s)}</span>`).join('')||'<span class="sub">спецпоказатели не обнаружены</span>'}</div>
 <p class="sub" style="margin:6px 0">Угрозы <b style="color:var(--tx)">${y.bk[i].n?f2(y.bk[i].t):'копится'}</b> · контроль <b style="color:var(--tx)">${y.bk[i].n?f2(y.bk[i].c):'копится'}</b></p><p class="sub" style="margin:6px 0">Дисциплина (справка): ${dgs(X)||'нет данных'}</p><p class="sub" style="margin:8px 0 4px">Последние матчи: открой и внеси статистику</p>`
   +X.E.slice(-6).reverse().map(x=>`<details><summary>${ltr(x)} · ${x.d.slice(5)} ${x.hm?'дома':'в гостях'}, ${esc(x.o)} ${x.gf}:${x.ga} ${hasS(x.m)?'📊':''}</summary>${sform(M.indexOf(x.m))}</details>`).join('')+'</div>'};
- o.innerHTML=`<div class="card" style="padding:8px"><p class="sub" style="padding:2px 6px">${m.date} · ${COMPS[m.c]||''}${m.hg!=null?' · сыграно '+m.hg+':'+m.ag:''}</p>${pitch(m.h,m.a,lh,la,lh/(lh+la))}</div>
+ o.innerHTML=`${BACK}<div class="card" style="padding:8px"><p class="sub" style="padding:2px 6px">${m.date} · ${COMPS[m.c]||''}${m.hg!=null?' · сыграно '+m.hg+':'+m.ag:''}</p>${pitch(m.h,m.a,lh,la,lh/(lh+la))}</div>
 <div class="card"><div class="pb"><div style="width:${p[0]*100}%;background:var(--h)">${pc(p[0])}</div><div style="width:${p[1]*100}%;background:#d9e2dc">${pc(p[1])}</div><div style="width:${p[2]*100}%;background:var(--a)">${pc(p[2])}</div></div>
 <p class="sub" style="display:flex;justify-content:space-between;margin-top:4px"><span>победа: ${esc(m.h)}</span><span>ничья</span><span>победа: ${esc(m.a)}</span></p></div>
 <div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>доверие к статистике${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}. Матчей с xG: ${esc(m.h)} ${nx[0]}, ${esc(m.a)} ${nx[1]}${nx[0]<MINN||nx[1]<MINN?'. Пока основа прогноза идёт по голам, статистика подключается с '+MINN+' матчей':''}. Формула ${VER}.</p></div>
@@ -297,7 +320,7 @@ function board(w){
 ${charts(A,B,m)}${col(A,m.h,0)}${col(B,m.a,1)}
 ${m.pr&&m.hg==null?'<p class="sub">Прогноз записан в карточку матча. После игры счёт подставится при обновлении результатов, останется добавить статистику.</p>':''}
 <p class="sub">Это вероятности, а не обещание счёта. Полезность каждого слоя проверяется на вкладке «Проверка».</p>
-<div class="row" style="margin-top:10px">${m.pr?'<button class="b g" onclick="delP()">Убрать записанный прогноз</button>':''}<button class="b g" style="color:var(--a)" onclick="delM(${SEL})">Удалить матч из базы</button></div>`}
+<div class="row" style="margin-top:10px">${m.pr?'<button class="b g" onclick="board(1)">Обновить записанный прогноз</button><button class="b g" onclick="delP()">Убрать записанный прогноз</button>':''}<button class="b g" style="color:var(--a)" onclick="delM(${SEL})">Удалить матч из базы</button></div>`}
 function drawTeams(){
  const{L,T}=run(M),t=Date.now()/864e5,q=$('tq').value.trim().toLowerCase(),
  rows=Object.entries(T).filter(([n])=>n.toLowerCase().includes(q)).map(([n,x])=>(relax(x,t),[n,x])).sort((p,r)=>(r[1].a+r[1].d)-(p[1].a+p[1].d)).slice(0,60);
@@ -355,7 +378,7 @@ const bkData=()=>M.filter(m=>hasS(m)||m.pr||!m.fid);
 function bkInfo(){let b=null;try{b=JSON.parse(localStorage.getItem('fxbk')||'null')}catch(e){}
  const n=M.filter(m=>hasS(m)||m.pr).length,age=b?(Date.now()-b.t)/864e5:99,need=n>0&&(!b||(n>b.n&&age>2)||age>14),el=$('bk');
  el.textContent=`Твоих записей (статистика и прогнозы): ${n}. Последняя копия: ${b?new Date(b.t).toLocaleDateString('ru-RU')+', записей '+b.n:'ещё не сохранял'}.${need?' Пора сохранить копию.':''}`;el.style.color=need?'var(--a)':''}
-function refresh(){save();const ss=[...new Set(M.map(m=>m.se))].filter(Boolean).sort().reverse();if(!ss.includes(SZ))SZ=ss[0]||'';$('sz').innerHTML=ss.map(x=>`<option${x==SZ?' selected':''}>${x}</option>`).join('');list();drawTables();if(SEL>=0&&M[SEL])board();bkInfo()}
+function refresh(){save();const ss=[...new Set(M.map(m=>m.se))].filter(Boolean).sort().reverse();if(!ss.includes(SZ))SZ=ss[0]||'';$('sz').innerHTML=ss.map(x=>`<option${x==SZ?' selected':''}>${x}</option>`).join('');list();drawTables();if(TAB=='board')showB();bkInfo()}
 
 let LG='PL',LIM=30,LIM2=40;const CR={},REG=['REGULAR_SEASON','LEAGUE_STAGE','GROUP_STAGE'],
  cr=n=>CR[n]?`<img class="cr" src="${esc(CR[n])}" alt="" loading="lazy" onerror="this.remove()">`:'';
@@ -389,8 +412,68 @@ function charts(A,B,m){
   ln=(arr,col,d)=>{const q=arr.map((v,i)=>v==null?null:[px(i),py(v)]).filter(Boolean);return`<polyline points="${q.map(z=>z.join(',')).join(' ')}" fill="none" stroke="${col}" stroke-width="2.5" ${d?'stroke-dasharray="6 4"':''}/>`+q.map(z=>`<circle cx="${z[0]}" cy="${z[1]}" r="3.5" fill="${col}"/>`).join('')};
   return`<p style="margin-bottom:4px"><b>${esc(n)}</b> <span class="sub">xG за (линия) и против (пунктир)</span></p><svg viewBox="0 0 ${W} 112" width="100%"><g stroke="#3b7556"><line x1="30" x2="${W}" y1="100" y2="100"/><line x1="30" x2="${W}" y1="${py(mx/2)}" y2="${py(mx/2)}" stroke-dasharray="3 4"/></g><text x="0" y="14" fill="#9cc2ad" font-size="11">${mx.toFixed(1)}</text><text x="0" y="104" fill="#9cc2ad" font-size="11">0</text>${ln(a,'#9cc2ad',1)}${ln(f,c,0)}</svg>`};
  return`<h2>Диаграммы</h2><div class="card"><div style="display:flex;justify-content:space-between"><b style="color:var(--h)">${esc(m.h)}</b><b style="color:var(--a)">${esc(m.a)}</b></div>${bars}<p class="sub">Средние за последние матчи со статистикой.</p></div><div class="card">${tr(A,m.h,'#6cc4ff')}</div><div class="card">${tr(B,m.a,'#ff9159')}</div>`}
-function go(t){document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='teams')drawTeams();if(t=='tables')drawTables();scrollTo(0,0)}
-document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{go(b.dataset.t);if(b.dataset.t=='board')board()});
+
+/* ===== журнал прогнозов ===== */
+const BACK=`<button class="b g" style="width:100%;margin-bottom:8px" onclick="SUBV='j';showB()">← Журнал прогнозов</button>`;
+function showB(w){const j=SUBV=='j';$('jr').style.display=j?'':'none';$('bw').style.display=j?'none':'';if(j)drawJournal();else board(w)}
+function jo(i){SEL=i;SUBV='m';showB()}
+function drawJournal(){
+ const rows=M.map((m,i)=>[m,i]).filter(([m])=>m.pr),fin=rows.filter(([m])=>m.hg!=null).sort((x,y)=>byD(y[0],x[0])),wt=rows.filter(([m])=>m.hg==null).sort((x,y)=>byD(x[0],y[0])),F=[0,0,0];
+ M.forEach(m=>{if(m.hg!=null)F[oc(m)]++});const z=F[0]+F[1]+F[2]||1,n=fin.length;let ok=0,ll=0,bs=0,lb=0;
+ fin.forEach(([m])=>{const p=m.pr.p,k=oc(m);if(am(p)==k)ok++;ll-=Math.log(Math.max(p[k],1e-4));bs+=p.reduce((s,v,i)=>s+(v-(i==k?1:0))**2,0);lb-=Math.log(Math.max(F[k]/z,1e-4))});
+ const row=([m,i])=>`<div class="card" onclick="jo(${i})" style="padding:10px;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}</span><b>${m.hg!=null?(oc(m)==am(m.pr.p)?'✓ исход угадан':'✗ не угадан'):'ждём матч'}</b></div>
+<p style="font:700 18px var(--hd);margin:4px 0">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg!=null?m.hg+':'+m.ag:'—'}</span> ${cr(m.a)}${esc(m.a)}</p>
+<span class="sub">Прогноз: хозяева ${pc(m.pr.p[0])} · ничья ${pc(m.pr.p[1])} · гости ${pc(m.pr.p[2])}. Нажми для разбора</span></div>`;
+ $('jr').innerHTML=`<h2>Журнал прогнозов</h2><div class="card"><div class="k"><div><b>${rows.length}</b><span>прогнозов</span></div><div><b>${wt.length}</b><span>ждут матча</span></div><div><b>${n?ok+' из '+n:'—'}</b><span>исход угадан</span></div></div>`
+ +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'
+ +(wt.length?'<h2>Ждут матча</h2>'+wt.map(row).join(''):'')+(fin.length?'<h2>Разобранные матчи</h2>'+fin.map(row).join(''):'')
+ +(rows.length?'':'<div class="card"><p>Журнал пуст. Открой будущий матч во вкладке «Матчи» и нажми «Прогноз»: он попадёт сюда сам.</p></div>')}
+function review(m){
+ const o=$('out');
+ if(!m.pr){o.innerHTML=BACK+`<div class="card"><p>Матч ${esc(m.h)} — ${esc(m.a)} сыгран, но прогноз на него не записывался, поэтому разбирать нечего.</p></div>`;return}
+ const r=m.pr,d=dist(r.l[0],r.l[1]),D=r.cal&&r.cal.on?calD(d,r.cal):d,p=r.p,k=oc(m),pk=am(p),tot=m.hg+m.ag,top=[];
+ for(let i=0;i<11;i++)for(let j=0;j<11;j++)top.push([i,j,D.m[i*11+j]]);top.sort((a,b)=>b[2]-a[2]);
+ const act=D.m[Math.min(m.hg,10)*11+Math.min(m.ag,10)],br=p.reduce((s,v,i)=>s+(v-(i==k?1:0))**2,0),lg=-Math.log(Math.max(p[k],1e-4)),
+ nm=['победа хозяев','ничья','победа гостей'],yn=b=>b?'да':'нет',q1=sv(m,0,'xg'),q2=sv(m,1,'xg'),by=m.hg>0&&m.ag>0,
+ rw=(t,a,b,ok)=>`<tr><td>${t}<td>${a}<td>${b}<td>${ok==null?'':ok?'✓':'✗'}`;
+ o.innerHTML=BACK+`<div class="card"><p class="sub">${m.date} · ${COMPS[m.c]||''}</p><p style="font:700 22px var(--hd);margin:4px 0 10px">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg}:${m.ag}</span> ${cr(m.a)}${esc(m.a)}</p>
+<p>${pk==k?'Исход угадан.':'Исход не угадан.'} Модель ждала: ${nm[pk]} (${pc(p[pk])}), на деле: ${nm[k]}, ему давали ${pc(p[k])}.</p></div>
+<div class="card sc"><table class="t"><tr><th>Что<th>Прогноз<th>Факт<th></tr>
+${rw('Исход',nm[pk]+', '+pc(p[pk]),nm[k],pk==k)}${rw('Точный счёт',top[0][0]+':'+top[0][1]+', '+(top[0][2]*100).toFixed(1)+'%',m.hg+':'+m.ag+' ('+(act*100).toFixed(1)+'%)',top[0][0]==m.hg&&top[0][1]==m.ag)}
+${rw('Обе забьют',yn(D.bt>.5)+', '+pc(D.bt),yn(by),(D.bt>.5)==by)}${rw('Тотал больше 2,5',yn(D.ov>.5)+', '+pc(D.ov),yn(tot>2)+' (всего '+tot+')',(D.ov>.5)==(tot>2))}
+${rw('Голы хозяев','λ '+r.l[0],m.hg,null)}${rw('Голы гостей','λ '+r.l[1],m.ag,null)}${q1!=null&&q2!=null?rw('xG матча','λ '+r.l[0]+' : '+r.l[1],q1+' : '+q2,null):''}</table></div>
+<div class="card"><p>Оценка прогноза: LogLoss ${lg.toFixed(2)}, Brier ${br.toFixed(2)}. Чем меньше, тем лучше. Для сравнения, равные шансы на три исхода дают LogLoss 1,10.</p>
+<p class="sub" style="margin-top:6px">Прогноз записан ${r.at||'—'}, формула ${r.v||'—'}. Счёт и вероятности для разбора восстановлены по записанным λ, поэтому проценты точного счёта приблизительные.</p>
+<button class="b g" style="width:100%;margin-top:10px" onclick="delP()">Убрать прогноз из журнала</button></div>`}
+
+/* ===== автосохранение в GitHub ===== */
+const GHU=()=>`https://api.github.com/repos/${GH.repo}/contents/data/user.json`,GHH=a=>({Authorization:'Bearer '+GH.tk,Accept:a||'application/vnd.github+json'}),
+ b64=t=>btoa(unescape(encodeURIComponent(t))),gst=t=>{$('gs').textContent=t},
+ gerr=e=>e==401?'токен не подходит или истёк':e==403||e==404?'нет доступа к репозиторию: проверь имя и право Contents: Read and write':e instanceof TypeError?'нет связи':'ошибка '+e,
+ gpay=()=>JSON.stringify({v:1,del:DELS,m:M.filter(m=>hasS(m)||m.pr||!m.fid).map(m=>m.fid?{fid:m.fid,date:m.date,h:m.h,a:m.a,s1:m.s1,s2:m.s2,pr:m.pr}:m)}),
+ gput=b=>fetch(GHU(),{method:'PUT',headers:{...GHH(),'Content-Type':'application/json'},body:JSON.stringify({message:'Сохранение данных приложения',content:b64(b),...(GH.sha?{sha:GH.sha}:{})})});
+async function gpull(){
+ if(!GH.tk||!GH.repo)return;
+ try{const r=await fetch(GHU(),{headers:GHH()});
+  if(r.status==404){GH.ready=true;GH.sha=null;gst('Автосохранение включено. Файла в репозитории ещё нет, он создастся при первом сохранении.');gsched(1);return}
+  if(!r.ok)throw r.status;GH.sha=(await r.json()).sha;
+  const t=await(await fetch(GHU(),{headers:GHH('application/vnd.github.raw+json')})).text(),d=JSON.parse(t);
+  DELS=[...new Set([...DELS,...(d.del||[])])];(d.m||[]).forEach(x=>add(x));LASTH=t;GH.ready=true;refresh();
+  gst(`Автосохранение включено. Из репозитория загружено записей: ${(d.m||[]).length}.`);gsched(1)}
+ catch(e){gst('Автосохранение не подключилось: '+gerr(e)+'. Данные остаются в браузере.')}}
+function gsched(now){if(!GH.tk||!GH.repo||!GH.ready)return;clearTimeout(GT);GT=setTimeout(gpush,now?500:6000)}
+async function gpush(){
+ if(GH.busy)return gsched();
+ const body=gpay();if(body==LASTH||(!GH.sha&&!bkData().length&&!DELS.length))return;
+ GH.busy=true;
+ try{let r=await gput(body);
+  if(r.status==409||r.status==422){const m=await fetch(GHU(),{headers:GHH()});GH.sha=m.ok?(await m.json()).sha:null;r=await gput(body)}
+  if(!r.ok)throw r.status;GH.sha=(await r.json()).content.sha;LASTH=body;
+  gst('Автосохранение: сохранено в репозиторий в '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}))}
+ catch(e){gst('Автосохранение: не удалось ('+gerr(e)+'). Данные остаются в браузере.')}
+ GH.busy=false}
+function go(t){TAB=t;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='teams')drawTeams();if(t=='tables')drawTables();scrollTo(0,0)}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{go(b.dataset.t);if(b.dataset.t=='board'){SUBV='j';showB()}});
 $('sz').onchange=()=>{SZ=$('sz').value;LIM=30;list();drawTables()};$('ly').onchange=()=>board();$('tq').oninput=drawTeams;$('fk').onchange=$('fl').onchange=()=>{LIM=30;list()};$('fq').oninput=()=>{LIM=30;list()};$('syn').onclick=load;
 $('go').onclick=()=>{$('lr').textContent='Считаю…';setTimeout(lab,30)};
 $('imp').onclick=()=>{const s=$('bulk').value.trim();let k=0;
@@ -406,5 +489,12 @@ $('rst').onclick=()=>{DELS=[];try{localStorage.removeItem('fxdel')}catch(e){}$('
 $('clr').onclick=()=>{if(confirm('Удалить все матчи и всю статистику из этого браузера? Матчи вернутся при загрузке данных, статистика нет.')){M=[];DELS=[];try{localStorage.removeItem('fxdel')}catch(e){}SEL=-1;refresh();load()}};
 $('fl').innerHTML='<option value="">Все лиги</option>'+Object.entries(COMPS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
 try{localStorage.removeItem('fxkey')}catch(e){}
-refresh();load();
+$('ghr').value=GH.repo;try{const h=location.hostname.match(/^([^.]+)\.github\.io$/);if(h&&!GH.repo)$('ghr').value=h[1]+'/'+(location.pathname.split('/')[1]||h[1]+'.github.io')}catch(e){}
+gst(GH.tk?'Автосохранение: подключаю…':'Автосохранение выключено. Пока данные лежат только в браузере.');
+$('ghon').onclick=()=>{const tk=$('ght').value.trim(),rp=$('ghr').value.trim();
+ if(!tk||!/^[^\/\s]+\/[^\/\s]+$/.test(rp))return gst('Нужны токен и имя репозитория в виде владелец/репозиторий.');
+ GH={tk,repo:rp,ready:false,sha:null,busy:false};try{localStorage.setItem('fxgh',JSON.stringify({tk,repo:rp}))}catch(e){}$('ght').value='';gpull()};
+$('ghnow').onclick=()=>{if(!GH.tk)return gst('Сначала включи автосохранение.');if(GH.ready){LASTH='';gsched(1)}else gpull()};
+$('ghoff').onclick=()=>{GH={tk:'',repo:GH.repo,ready:false,sha:null,busy:false};try{localStorage.removeItem('fxgh')}catch(e){}gst('Автосохранение выключено, токен удалён из браузера.')};
+refresh();load().then(gpull);
 </script></body></html>
