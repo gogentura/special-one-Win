@@ -61,8 +61,9 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <h2>Импорт и экспорт</h2>
 <div class="card">
 <textarea id="bulk" rows="3" placeholder="Строки: дата,хозяева,гости,голы,голы[,xG,xG] или JSON из экспорта"></textarea>
-<div class="row" style="margin-top:8px"><button class="b" id="imp">Импорт</button><button class="b g" id="exp">Экспорт JSON</button><button class="b g" id="rst">Вернуть удалённые</button><button class="b g" id="clr">Очистить всё</button></div>
-<p class="sub" id="msg" style="margin-top:6px">Твоя статистика и прогнозы хранятся в этом браузере, поэтому иногда делай экспорт.</p>
+<div class="row" style="margin-top:8px"><button class="b" id="imp">Импорт</button><button class="b g" id="exp">Сохранить копию</button><button class="b g" id="imfb">Открыть копию из файла</button><input type="file" id="imf" accept=".json,application/json" style="display:none"><button class="b g" id="rst">Вернуть удалённые</button><button class="b g" id="clr">Очистить всё</button></div>
+<p class="sub" id="bk" style="margin-top:8px"></p>
+<p class="sub" id="msg" style="margin-top:6px">Счета и расписание лежат в репозитории, а твоя статистика и прогнозы хранятся в этом браузере. Копия защищает их от потери.</p>
 </div>
 </section>
 
@@ -135,6 +136,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </section>
 </main>
 <script>
+
 
 
 
@@ -254,7 +256,7 @@ function sform(i){const m=M[i],hd=(n,c,t)=>`<div style="border-top:3px solid ${c
 function ss(b,i){const m=M[i],s=[{},{}],o=b.nextElementSibling;
  b.parentElement.querySelectorAll('input').forEach(e=>{const v=nul(e.value);if(v!=null)s[e.dataset.s-1][e.dataset.k]=v});
  if([0,1].some(j=>s[j].pos>100||s[j].pa>100||s[j].sot>s[j].sh)){o.textContent=' Проверь: проценты до 100, ударов в створ не больше, чем ударов.';return}
- m.s1=s[0];m.s2=s[1];save();o.textContent=' Сохранено ✓'}
+ m.s1=s[0];m.s2=s[1];save();bkInfo();o.textContent=' Сохранено ✓'}
 function card(m,i){
  const r=m.pr?`<span class="ch" style="font-size:14px">${pc(m.pr.p[0])} · ${pc(m.pr.p[1])} · ${pc(m.pr.p[2])}${m.hg!=null?(oc(m)==am(m.pr.p)?' ✓':' ✗'):''}</span>`:'';
  return`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}${m.md?' · тур '+m.md:''}</span>${r}</div>
@@ -349,7 +351,11 @@ async function load(){
   d.matches.forEach(x=>add({fid:x.id,c:x.c,date:x.d,h:x.h,a:x.a,hg:x.hg,ag:x.ag,st:x.st,md:x.md,se:x.s}));
   sm.textContent=`Данные от ${new Date(d.updated).toLocaleString('ru-RU')}: матчей ${d.matches.length}, команд ${Object.keys(d.teams).length}. Обновляются сами раз в 4 часа.`;refresh()}
  catch(e){sm.textContent='Файла data/matches.json пока нет. Добавь файлы загрузки в GitHub и запусти Actions, после этого команды и матчи появятся здесь.'}}
-function refresh(){save();const ss=[...new Set(M.map(m=>m.se))].filter(Boolean).sort().reverse();if(!ss.includes(SZ))SZ=ss[0]||'';$('sz').innerHTML=ss.map(x=>`<option${x==SZ?' selected':''}>${x}</option>`).join('');list();drawTables();if(SEL>=0&&M[SEL])board()}
+const bkData=()=>M.filter(m=>hasS(m)||m.pr||!m.fid);
+function bkInfo(){let b=null;try{b=JSON.parse(localStorage.getItem('fxbk')||'null')}catch(e){}
+ const n=M.filter(m=>hasS(m)||m.pr).length,age=b?(Date.now()-b.t)/864e5:99,need=n>0&&(!b||(n>b.n&&age>2)||age>14),el=$('bk');
+ el.textContent=`Твоих записей (статистика и прогнозы): ${n}. Последняя копия: ${b?new Date(b.t).toLocaleDateString('ru-RU')+', записей '+b.n:'ещё не сохранял'}.${need?' Пора сохранить копию.':''}`;el.style.color=need?'var(--a)':''}
+function refresh(){save();const ss=[...new Set(M.map(m=>m.se))].filter(Boolean).sort().reverse();if(!ss.includes(SZ))SZ=ss[0]||'';$('sz').innerHTML=ss.map(x=>`<option${x==SZ?' selected':''}>${x}</option>`).join('');list();drawTables();if(SEL>=0&&M[SEL])board();bkInfo()}
 
 let LG='PL',LIM=30,LIM2=40;const CR={},REG=['REGULAR_SEASON','LEAGUE_STAGE','GROUP_STAGE'],
  cr=n=>CR[n]?`<img class="cr" src="${esc(CR[n])}" alt="" loading="lazy" onerror="this.remove()">`:'';
@@ -391,7 +397,11 @@ $('imp').onclick=()=>{const s=$('bulk').value.trim();let k=0;
  if(s[0]=='['){try{JSON.parse(s).forEach(m=>k+=add(m))}catch(e){}}
  else s.split('\n').forEach(l=>{const c=l.split(/[;,\t]/).map(x=>x.trim());k+=add({date:c[0],h:c[1],a:c[2],hg:c[3],ag:c[4],hx:c[5],ax:c[6]})});
  $('msg').textContent='Добавлено или обновлено матчей: '+k;$('bulk').value='';refresh()};
-$('exp').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(M,null,1)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='fieldx-matches.json';a.click();URL.revokeObjectURL(u)};
+$('exp').onclick=()=>{const d=bkData(),u=URL.createObjectURL(new Blob([JSON.stringify(d)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='fieldx-copy-'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);
+ try{localStorage.setItem('fxbk',JSON.stringify({t:Date.now(),n:d.filter(m=>hasS(m)||m.pr).length}))}catch(e){}bkInfo()};
+$('imfb').onclick=()=>$('imf').click();
+$('imf').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{$('bulk').value=r.result;$('imp').click();$('imf').value=''};r.readAsText(f)};
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 $('rst').onclick=()=>{DELS=[];try{localStorage.removeItem('fxdel')}catch(e){}$('msg').textContent='Удалённые матчи вернутся при загрузке данных.';load()};
 $('clr').onclick=()=>{if(confirm('Удалить все матчи и всю статистику из этого браузера? Матчи вернутся при загрузке данных, статистика нет.')){M=[];DELS=[];try{localStorage.removeItem('fxdel')}catch(e){}SEL=-1;refresh();load()}};
 $('fl').innerHTML='<option value="">Все лиги</option>'+Object.entries(COMPS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
