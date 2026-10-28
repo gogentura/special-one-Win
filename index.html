@@ -61,7 +61,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <h2>Импорт и экспорт</h2>
 <div class="card">
 <textarea id="bulk" rows="3" placeholder="Строки: дата,хозяева,гости,голы,голы[,xG,xG] или JSON из экспорта"></textarea>
-<div class="row" style="margin-top:8px"><button class="b" id="imp">Импорт</button><button class="b g" id="exp">Экспорт JSON</button><button class="b g" id="clr">Очистить всё</button></div>
+<div class="row" style="margin-top:8px"><button class="b" id="imp">Импорт</button><button class="b g" id="exp">Экспорт JSON</button><button class="b g" id="rst">Вернуть удалённые</button><button class="b g" id="clr">Очистить всё</button></div>
 <p class="sub" id="msg" style="margin-top:6px">Твоя статистика и прогнозы хранятся в этом браузере, поэтому иногда делай экспорт.</p>
 </div>
 </section>
@@ -136,7 +136,9 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </main>
 <script>
 
-let CAL=null,SZ='';try{CAL=JSON.parse(localStorage.getItem('fxcal')||'null')}catch(e){}
+
+let CAL=null,SZ='',DELS=[];try{DELS=JSON.parse(localStorage.getItem('fxdel')||'[]')}catch(e){}
+try{CAL=JSON.parse(localStorage.getItem('fxcal')||'null')}catch(e){}
 const seasonOf=d=>{const y=+d.slice(0,4)-(+d.slice(5,7)<7?1:0);return y+'/'+String(y+1).slice(2)};
 
 
@@ -256,7 +258,7 @@ function card(m,i){
  const r=m.pr?`<span class="ch" style="font-size:14px">${pc(m.pr.p[0])} · ${pc(m.pr.p[1])} · ${pc(m.pr.p[2])}${m.hg!=null?(oc(m)==am(m.pr.p)?' ✓':' ✗'):''}</span>`:'';
  return`<div class="card"><div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}${m.md?' · тур '+m.md:''}</span>${r}</div>
 <p style="font:700 19px var(--hd);margin:4px 0 8px">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg!=null?m.hg+':'+m.ag:'—'}</span> ${cr(m.a)}${esc(m.a)}</p>
-${m.hg==null?`<button class="b" style="width:100%;margin-bottom:8px" onclick="fc(${i})">Прогноз</button>`:''}
+${m.hg==null?`<div class="row" style="margin-bottom:8px"><button class="b" onclick="fc(${i})">Прогноз</button><button class="b g" style="flex:.5;min-width:0" onclick="delM(${i})">Удалить</button></div>`:''}
 <details><summary>Статистика ${hasS(m)?'📊':''}</summary>${sform(i)}</details></div>`}
 function list(){
  const f=$('fk').value,cp=$('fl').value,q=$('fq').value.trim().toLowerCase(),td=new Date(Date.now()-2*864e5).toISOString().slice(0,10),
@@ -266,6 +268,10 @@ function list(){
  $('ml').innerHTML=rows.slice(0,LIM).map(([m,i])=>card(m,i)).join('')||'<div class="card"><p>Здесь пусто. Если данных совсем нет, проверь, что в репозитории есть файл data/matches.json.</p></div>'
   +(rows.length>LIM?'<button class="b g" style="width:100%" onclick="LIM+=30;list()">Показать ещё</button>':'')}
 function fc(i){SEL=i;go('board');board(1)}
+function delM(i){const m=M[i];if(!m||!confirm(`Удалить матч «${m.h} — ${m.a}» из базы${m.hg!=null||hasS(m)||m.pr?' вместе со статистикой и прогнозом':''}?`))return;
+ if(m.fid){DELS.push(m.fid);try{localStorage.setItem('fxdel',JSON.stringify(DELS))}catch(e){}}
+ M.splice(i,1);if(SEL==i)SEL=-1;else if(SEL>i)SEL--;refresh();if(SEL<0)go('matches')}
+function delP(){const m=M[SEL];if(!m||!m.pr)return;delete m.pr;save();board();list()}
 function board(w){
  const o=$('out'),m=M[SEL];
  if(!m){o.innerHTML='<div class="card"><p>Открой будущий матч на вкладке «Матчи» и нажми «Прогноз».</p></div>';return}
@@ -287,7 +293,8 @@ function board(w){
 <h2>Как менялась λ по слоям</h2><div class="card"><table class="t"><tr><th>Слой<th>Хозяева<th>Гости</tr>${y.l.map((l,i)=>`<tr${i==ly?' style="color:var(--ac);font-weight:600"':''}><td>${nm[i]}<td>${l[0].toFixed(2)}<td>${l[1].toFixed(2)}`).join('')}</table></div>
 ${charts(A,B,m)}${col(A,m.h,0)}${col(B,m.a,1)}
 ${m.pr&&m.hg==null?'<p class="sub">Прогноз записан в карточку матча. После игры счёт подставится при обновлении результатов, останется добавить статистику.</p>':''}
-<p class="sub">Это вероятности, а не обещание счёта. Полезность каждого слоя проверяется на вкладке «Проверка».</p>`}
+<p class="sub">Это вероятности, а не обещание счёта. Полезность каждого слоя проверяется на вкладке «Проверка».</p>
+<div class="row" style="margin-top:10px">${m.pr?'<button class="b g" onclick="delP()">Убрать записанный прогноз</button>':''}<button class="b g" style="color:var(--a)" onclick="delM(${SEL})">Удалить матч из базы</button></div>`}
 function drawTeams(){
  const{L,T}=run(M),t=Date.now()/864e5,q=$('tq').value.trim().toLowerCase(),
  rows=Object.entries(T).filter(([n])=>n.toLowerCase().includes(q)).map(([n,x])=>(relax(x,t),[n,x])).sort((p,r)=>(r[1].a+r[1].d)-(p[1].a+p[1].d)).slice(0,60);
@@ -329,6 +336,7 @@ function add(m){
  const g=v=>v==null||v===''?null:Math.round(+v),ns=(o,x)=>{const r={};KS.forEach(([k])=>{const v=nul(k=='xg'&&(o||{})[k]==null?x:(o||{})[k]);if(v!=null)r[k]=v});return r};
  m={fid:m.fid||null,c:m.c||'',st:m.st||null,md:m.md||null,date:String(m.date||'').trim(),h:String(m.h||'').trim(),a:String(m.a||'').trim(),hg:g(m.hg),ag:g(m.ag),s1:ns(m.s1,m.hx),s2:ns(m.s2,m.ax),pr:m.pr||null};
  m.se=m.se||(/^\d{4}-\d\d-\d\d$/.test(m.date)?seasonOf(m.date):'');
+ if(m.fid&&DELS.includes(m.fid))return 0;
  if(!m.h||!m.a||m.h==m.a||!/^\d{4}-\d\d-\d\d$/.test(m.date)||(m.hg==null)!=(m.ag==null)||(m.hg!=null&&!(m.hg>=0&&m.ag>=0)))return 0;
  let i=m.fid?M.findIndex(x=>x.fid==m.fid):-1;if(i<0)i=M.findIndex(x=>x.h==m.h&&x.a==m.a&&Math.abs(day(x.date)-day(m.date))<=1&&(!x.fid||!m.fid));
  if(i<0)M.push(m);else{const o=M[i];M[i]={...o,...m,fid:m.fid||o.fid,c:m.c||o.c,se:m.se||o.se,st:m.st||o.st,md:m.md||o.md,hg:m.hg??o.hg,ag:m.ag??o.ag,s1:{...o.s1,...m.s1},s2:{...o.s2,...m.s2},pr:m.pr||o.pr}}
@@ -383,7 +391,8 @@ $('imp').onclick=()=>{const s=$('bulk').value.trim();let k=0;
  else s.split('\n').forEach(l=>{const c=l.split(/[;,\t]/).map(x=>x.trim());k+=add({date:c[0],h:c[1],a:c[2],hg:c[3],ag:c[4],hx:c[5],ax:c[6]})});
  $('msg').textContent='Добавлено или обновлено матчей: '+k;$('bulk').value='';refresh()};
 $('exp').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify(M,null,1)],{type:'application/json'})),a=document.createElement('a');a.href=u;a.download='fieldx-matches.json';a.click();URL.revokeObjectURL(u)};
-$('clr').onclick=()=>{if(confirm('Удалить все матчи и всю статистику из этого браузера? Матчи вернутся при загрузке данных, статистика нет.')){M=[];SEL=-1;refresh();load()}};
+$('rst').onclick=()=>{DELS=[];try{localStorage.removeItem('fxdel')}catch(e){}$('msg').textContent='Удалённые матчи вернутся при загрузке данных.';load()};
+$('clr').onclick=()=>{if(confirm('Удалить все матчи и всю статистику из этого браузера? Матчи вернутся при загрузке данных, статистика нет.')){M=[];DELS=[];try{localStorage.removeItem('fxdel')}catch(e){}SEL=-1;refresh();load()}};
 $('fl').innerHTML='<option value="">Все лиги</option>'+Object.entries(COMPS).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
 try{localStorage.removeItem('fxkey')}catch(e){}
 refresh();load();
