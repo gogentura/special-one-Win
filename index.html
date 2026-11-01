@@ -161,6 +161,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </main>
 <script>
 
+
 let TAB='matches',SUBV='j',GH={tk:'',repo:'',ready:false,sha:null,busy:false},GT=null,LASTH='';
 try{const g=JSON.parse(localStorage.getItem('fxgh')||'null');if(g)GH={...GH,tk:g.tk||'',repo:g.repo||''}}catch(e){}
 
@@ -452,17 +453,35 @@ function charts(A,B,m){
 const BACK=`<button class="b g" style="width:100%;margin-bottom:8px" onclick="SUBV='j';showB()">← Журнал прогнозов</button>`;
 function showB(w){const j=SUBV=='j';$('jr').style.display=j?'':'none';$('bw').style.display=j?'none':'';if(j)drawJournal();else board(w)}
 function jo(i){SEL=i;SUBV='m';showB()}
+let JF={st:'all',lg:'',gr:'d'};
+const dlab=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'}),okm=m=>m.hg!=null&&oc(m)==am(m.pr.p);
 function drawJournal(){
- const rows=M.map((m,i)=>[m,i]).filter(([m])=>m.pr),fin=rows.filter(([m])=>m.hg!=null).sort((x,y)=>byD(y[0],x[0])),wt=rows.filter(([m])=>m.hg==null).sort((x,y)=>byD(x[0],y[0])),F=[0,0,0];
+ const all=M.map((m,i)=>[m,i]).filter(([m])=>m.pr),base=all.filter(([m])=>!JF.lg||m.c==JF.lg),
+ cnt={all:base.length,wait:base.filter(([m])=>m.hg==null).length,fin:base.filter(([m])=>m.hg!=null).length,ok:base.filter(([m])=>okm(m)).length};cnt.bad=cnt.fin-cnt.ok;
+ const rows=base.filter(([m])=>JF.st=='all'||(JF.st=='wait'?m.hg==null:JF.st=='fin'?m.hg!=null:JF.st=='ok'?okm(m):m.hg!=null&&!okm(m)))
+  .sort((a,b)=>{const x=a[0].hg==null,y=b[0].hg==null;return x!=y?(x?-1:1):x?byD(a[0],b[0]):byD(b[0],a[0])}),
+ fin=rows.filter(([m])=>m.hg!=null),F=[0,0,0];
  M.forEach(m=>{if(m.hg!=null)F[oc(m)]++});const z=F[0]+F[1]+F[2]||1,n=fin.length;let ok=0,ll=0,bs=0,lb=0;
  fin.forEach(([m])=>{const p=m.pr.p,k=oc(m);if(am(p)==k)ok++;ll-=Math.log(Math.max(p[k],1e-4));bs+=p.reduce((s,v,i)=>s+(v-(i==k?1:0))**2,0);lb-=Math.log(Math.max(F[k]/z,1e-4))});
- const row=([m,i])=>`<div class="card" onclick="jo(${i})" style="padding:10px;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}</span><b>${m.hg!=null?(oc(m)==am(m.pr.p)?'✓ исход угадан':'✗ не угадан'):'ждём матч'}</b></div>
-<p style="font:700 18px var(--hd);margin:4px 0">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg!=null?m.hg+':'+m.ag:'—'}</span> ${cr(m.a)}${esc(m.a)}</p>
-<span class="sub">Прогноз: хозяева ${pc(m.pr.p[0])} · ничья ${pc(m.pr.p[1])} · гости ${pc(m.pr.p[2])}. Нажми для разбора</span></div>`;
- $('jr').innerHTML=`<h2>Журнал прогнозов</h2><div class="card"><div class="k"><div><b>${rows.length}</b><span>прогнозов</span></div><div><b>${wt.length}</b><span>ждут матча</span></div><div><b>${n?ok+' из '+n:'—'}</b><span>исход угадан</span></div></div>`
- +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'
- +(wt.length?'<h2>Ждут матча</h2>'+wt.map(row).join(''):'')+(fin.length?'<h2>Разобранные матчи</h2>'+fin.map(row).join(''):'')
- +(rows.length?'':'<div class="card"><p>Журнал пуст. Открой будущий матч во вкладке «Матчи» и нажми «Прогноз»: он попадёт сюда сам.</p></div>')}
+ const rowH=([m,i])=>`<div onclick="jo(${i})" style="padding:9px 0;border-top:1px solid #245a3f;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}</span><b>${m.hg!=null?(okm(m)?'✓ угадан':'✗ не угадан'):'ждём матч'}</b></div>
+<p style="font:700 17px var(--hd);margin:3px 0">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg!=null?m.hg+':'+m.ag:'—'}</span> ${cr(m.a)}${esc(m.a)}</p>
+<span class="sub">Хозяева ${pc(m.pr.p[0])} · ничья ${pc(m.pr.p[1])} · гости ${pc(m.pr.p[2])}</span></div>`,
+ G=new Map(),put=(k,l,it)=>{if(!G.has(k))G.set(k,{l,a:[]});G.get(k).a.push(it)};
+ rows.forEach(it=>{const m=it[0];
+  if(JF.gr=='l')put(m.c||'',COMPS[m.c]||'Без лиги',it);
+  else if(JF.gr=='r')put(m.hg==null?'0':okm(m)?'1':'2',m.hg==null?'Ждут матча':okm(m)?'Исход угадан':'Исход не угадан',it);
+  else put((m.hg==null?'0':'1')+m.date,(m.hg==null?'Ждут · ':'Сыграно · ')+dlab(m.date),it)});
+ let gs=[...G.entries()];const ci=Object.keys(COMPS);
+ if(JF.gr=='l')gs.sort((x,y)=>ci.indexOf(x[0])-ci.indexOf(y[0]));else if(JF.gr=='r')gs.sort((x,y)=>x[0]<y[0]?-1:1);
+ const pills=[['all','Все'],['wait','Ждут матча'],['fin','Сыграны'],['ok','Угадано'],['bad','Не угадано']].map(([k,v])=>`<button class="${k==JF.st?'on':''}" onclick="JF.st='${k}';drawJournal()">${v} · ${cnt[k]}</button>`).join(''),
+ opt=(arr,cur)=>arr.map(([k,v])=>`<option value="${k}"${k==cur?' selected':''}>${v}</option>`).join('');
+ $('jr').innerHTML=`<h2>Журнал прогнозов</h2><div class="pl">${pills}</div>
+<div class="row"><select aria-label="Лига" onchange="JF.lg=this.value;drawJournal()">${opt([['','Все лиги'],...Object.entries(COMPS)],JF.lg)}</select><select aria-label="Группировка" onchange="JF.gr=this.value;drawJournal()">${opt([['d','Группировка: по дате'],['l','Группировка: по лигам'],['r','Группировка: по результату']],JF.gr)}</select></div>
+<div class="card"><div class="k"><div><b>${rows.length}</b><span>в выборке</span></div><div><b>${rows.length-n}</b><span>ждут матча</span></div><div><b>${n?ok+' из '+n:'—'}</b><span>исход угадан</span></div></div>`
+ +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">Числа считаются по выбранным фильтрам. По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'
+ +gs.map(([k,g])=>{const f=g.a.filter(([m])=>m.hg!=null),o2=f.filter(([m])=>okm(m)).length;
+  return`<details class="card" style="padding:10px" open><summary><b>${g.l}</b> <span class="sub">· ${g.a.length}${f.length&&JF.gr!='r'?' · угадано '+o2+' из '+f.length:''}</span></summary>${g.a.map(rowH).join('')}</details>`}).join('')
+ +(rows.length?'':all.length?'<div class="card"><p>В выборке нет прогнозов. Поменяй фильтры.</p></div>':'<div class="card"><p>Журнал пуст. Открой будущий матч во вкладке «Матчи» и нажми «Прогноз»: он попадёт сюда сам.</p></div>')}
 function review(m){
  const o=$('out');
  if(!m.pr){o.innerHTML=BACK+`<div class="card"><p>Матч ${esc(m.h)} — ${esc(m.a)} сыгран, но прогноз на него не записывался, поэтому разбирать нечего.</p></div>`;return}
