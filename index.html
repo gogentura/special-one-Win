@@ -167,6 +167,7 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </section>
 </main>
 <script>
+
 const PD0={BT:.3,BC:.08,BP:.04,FK:.12,SK:.05,KV:.1};let PAR={...PD0,n:0};
 try{const g=JSON.parse(localStorage.getItem('fxpar')||'null');if(g)PAR={...PAR,...g}}catch(e){}
 
@@ -322,18 +323,19 @@ function list(){
  $('cnt').textContent=`Найдено: ${rows.length}. В базе матчей: ${M.length}, со статистикой: ${M.filter(hasS).length}. Профиль команды включается с ${MINN} матчей со статистикой.`;
  $('ml').innerHTML=rows.slice(0,LIM).map(([m,i])=>card(m,i)).join('')||'<div class="card"><p>Здесь пусто. Если данных совсем нет, проверь, что в репозитории есть файл data/matches.json.</p></div>'
   +(rows.length>LIM?'<button class="b g" style="width:100%" onclick="LIM+=30;list()">Показать ещё</button>':'')}
-function fc(i){SEL=i;SUBV='m';go('board');showB(1)}
+function fc(i){SEL=i;go('board');const m=M[i];if(m.hg==null&&!m.pr&&!m.up){SUBV='p';showB()}else{SUBV='m';showB(1)}}
 function delM(i){const m=M[i];if(!m||!confirm(`Удалить матч «${m.h} — ${m.a}» из базы${m.hg!=null||hasS(m)||m.pr?' вместе со статистикой и прогнозом':''}?`))return;
  if(m.fid){DELS.push(m.fid);try{localStorage.setItem('fxdel',JSON.stringify(DELS))}catch(e){}}
  M.splice(i,1);if(SEL==i)SEL=-1;else if(SEL>i)SEL--;refresh();if(SEL<0)go('matches')}
-function delP(){const m=M[SEL];if(!m||!m.pr)return;delete m.pr;save();list();SUBV='j';showB()}
+function delP(){const m=M[SEL];if(!m||!m.pr)return;delete m.pr;delete m.up;save();list();SUBV='j';showB()}
 function board(w){
  const o=$('out'),m=M[SEL];
  if(!m){SUBV='j';showB();return}
  if(m.hg!=null){review(m);return}
  const{L,T}=run(M),bl=n=>T[n]||{a:0,d:0,n:0,t:null,E:[]},A=bl(m.h),B=bl(m.a),t=day(m.date);relax(A,t);relax(B,t);
  const y=lay(L,A,B),md=$('ly').value,Cg=md=='auto'?calib():null,C=Cg&&Cg.lg&&Cg.lg[m.c]?{...Cg,on:true,t:Cg.lg[m.c].t,d:Cg.lg[m.c].d}:Cg,ly=C?C.l:+md,[lh,la]=y.l[ly],d0=dist(lh,la),d=C&&C.on?calD(d0,C):d0,p=d.p,top=[];
- if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10),v:vlab(),par:{...PAR,BD,w:P.w},cal:C?{on:C.on,t:C.t,d:C.d}:null};save();list()}
+ const hb=hyb(m,p);
+ if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10),v:vlab(),par:{...PAR,BD,w:P.w},cal:C?{on:C.on,t:C.t,d:C.d}:null,...hb};save();list()}
  for(let i=0;i<11;i++)for(let j=0;j<11;j++)top.push([i,j,d.m[i*11+j]]);top.sort((a,b)=>b[2]-a[2]);
  const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=LN,nx=[A,B].map(X=>X.E.filter(e=>e.f&&e.f.xg!=null).length),mt=C?(C.on?`авто: слой «${nm[ly]}», калибровка включена${Cg&&Cg.lg&&Cg.lg[m.c]?' (по лиге)':''}`:'авто: полная формула, калибровка пока выключена'):'слой выбран вручную',
  col=(X,n,i)=>{const sp=y.sp[i],cp=comp(sp);
@@ -344,6 +346,7 @@ function board(w){
  o.innerHTML=`${BACK}<div class="card" style="padding:8px"><p class="sub" style="padding:2px 6px">${m.date} · ${COMPS[m.c]||''}${m.hg!=null?' · сыграно '+m.hg+':'+m.ag:''}</p>${pitch(m.h,m.a,lh,la,lh/(lh+la))}</div>
 <div class="card"><div class="pb"><div style="width:${p[0]*100}%;background:var(--h)">${pc(p[0])}</div><div style="width:${p[1]*100}%;background:#d9e2dc">${pc(p[1])}</div><div style="width:${p[2]*100}%;background:var(--a)">${pc(p[2])}</div></div>
 <p class="sub" style="display:flex;justify-content:space-between;margin-top:4px"><span>победа: ${esc(m.h)}</span><span>ничья</span><span>победа: ${esc(m.a)}</span></p></div>
+${m.up?`<div class="card"><p>Твой выбор: <b>${O3[m.up.k]}</b>${m.up.tag?' ('+esc(m.up.tag)+')':''}. Модель: <b>${O3[am(p)]}</b>, ${pc(Math.max(...p))}.</p>${hb.w?`<p class="sub" style="margin-top:6px">Модель прислушалась к тебе: по этим командам ты точнее неё. Вес твоего выбора ${pc(hb.w)}. С учётом выбора: хозяева ${pc(hb.pu[0])} · ничья ${pc(hb.pu[1])} · гости ${pc(hb.pu[2])}.</p>`:'<p class="sub" style="margin-top:6px">Прогноз модели не меняется. Чтобы она прислушалась, по этим командам нужно не меньше 5 общих матчей, где ты точнее неё.</p>'}</div>`:''}
 <div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>доверие к статистике${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}. Матчей с xG: ${esc(m.h)} ${nx[0]}, ${esc(m.a)} ${nx[1]}${nx[0]<MINN||nx[1]<MINN?'. Пока основа прогноза идёт по голам, статистика подключается с '+MINN+' матчей':''}. Формула ${VER}.</p></div>
 <div>${top.slice(0,6).map(c=>`<span class="ch">${c[0]}:${c[1]}<i>${(c[2]*100).toFixed(1)}%</i></span>`).join('')}</div>
 <h2>Как менялась λ по слоям</h2><div class="card"><table class="t"><tr><th>Слой<th>Хозяева<th>Гости</tr>${y.l.map((l,i)=>`<tr${i==ly?' style="color:var(--ac);font-weight:600"':''}><td>${nm[i]}<td>${l[0].toFixed(2)}<td>${l[1].toFixed(2)}`).join('')}</table></div>
@@ -412,12 +415,12 @@ function lab(){
 <p class="sub" style="margin-top:6px">Формула ${vlab()}. Цифры старых матчей ты вносишь сейчас, а тест считает их известными тогда, поэтому проверка приблизительная. Самый надёжный тест — прогнозы, записанные до матча: они хранятся в карточках с отметкой ✓ или ✗.</p>`}
 function add(m){
  const g=v=>v==null||v===''?null:Math.round(+v),ns=(o,x)=>{const r={};KS.forEach(([k])=>{const v=nul(k=='xg'&&(o||{})[k]==null?x:(o||{})[k]);if(v!=null)r[k]=v});return r};
- m={fid:m.fid||null,c:m.c||'',st:m.st||null,md:m.md||null,date:String(m.date||'').trim(),h:String(m.h||'').trim(),a:String(m.a||'').trim(),hg:g(m.hg),ag:g(m.ag),s1:ns(m.s1,m.hx),s2:ns(m.s2,m.ax),pr:m.pr||null};
+ m={fid:m.fid||null,c:m.c||'',st:m.st||null,md:m.md||null,date:String(m.date||'').trim(),h:String(m.h||'').trim(),a:String(m.a||'').trim(),hg:g(m.hg),ag:g(m.ag),s1:ns(m.s1,m.hx),s2:ns(m.s2,m.ax),pr:m.pr||null,up:m.up||null};
  m.se=m.se||(/^\d{4}-\d\d-\d\d$/.test(m.date)?seasonOf(m.date):'');
  if(m.fid&&DELS.includes(m.fid))return 0;
  if(!m.h||!m.a||m.h==m.a||!/^\d{4}-\d\d-\d\d$/.test(m.date)||(m.hg==null)!=(m.ag==null)||(m.hg!=null&&!(m.hg>=0&&m.ag>=0)))return 0;
  let i=m.fid?M.findIndex(x=>x.fid==m.fid):-1;if(i<0)i=M.findIndex(x=>x.h==m.h&&x.a==m.a&&Math.abs(day(x.date)-day(m.date))<=1&&(!x.fid||!m.fid));
- if(i<0)M.push(m);else{const o=M[i];M[i]={...o,...m,fid:m.fid||o.fid,c:m.c||o.c,se:m.se||o.se,st:m.st||o.st,md:m.md||o.md,hg:m.hg??o.hg,ag:m.ag??o.ag,s1:{...o.s1,...m.s1},s2:{...o.s2,...m.s2},pr:m.pr||o.pr}}
+ if(i<0)M.push(m);else{const o=M[i];M[i]={...o,...m,fid:m.fid||o.fid,c:m.c||o.c,se:m.se||o.se,st:m.st||o.st,md:m.md||o.md,hg:m.hg??o.hg,ag:m.ag??o.ag,s1:{...o.s1,...m.s1},s2:{...o.s2,...m.s2},pr:m.pr||o.pr,up:m.up||o.up}}
  return 1}
 async function load(){
  const sm=$('sm');
@@ -426,7 +429,7 @@ async function load(){
   d.matches.forEach(x=>add({fid:x.id,c:x.c,date:x.d,h:x.h,a:x.a,hg:x.hg,ag:x.ag,st:x.st,md:x.md,se:x.s}));
   sm.textContent=`Данные от ${new Date(d.updated).toLocaleString('ru-RU')}: матчей ${d.matches.length}, команд ${Object.keys(d.teams).length}. Обновляются сами раз в 4 часа.`;refresh()}
  catch(e){sm.textContent='Файла data/matches.json пока нет. Добавь файлы загрузки в GitHub и запусти Actions, после этого команды и матчи появятся здесь.'}}
-const bkData=()=>M.filter(m=>hasS(m)||m.pr||!m.fid);
+const bkData=()=>M.filter(m=>hasS(m)||m.pr||m.up||!m.fid);
 function bkInfo(){let b=null;try{b=JSON.parse(localStorage.getItem('fxbk')||'null')}catch(e){}
  const n=M.filter(m=>hasS(m)||m.pr).length,age=b?(Date.now()-b.t)/864e5:99,need=n>0&&(!b||(n>b.n&&age>2)||age>14),el=$('bk');
  el.textContent=`Твоих записей (статистика и прогнозы): ${n}. Последняя копия: ${b?new Date(b.t).toLocaleDateString('ru-RU')+', записей '+b.n:'ещё не сохранял'}.${need?' Пора сохранить копию.':''}`;el.style.color=need?'var(--a)':''}
@@ -467,7 +470,7 @@ function charts(A,B,m){
 
 /* ===== журнал прогнозов ===== */
 const BACK=`<button class="b g" style="width:100%;margin-bottom:8px" onclick="SUBV='j';showB()">← Журнал прогнозов</button>`;
-function showB(w){const j=SUBV=='j';$('jr').style.display=j?'':'none';$('bw').style.display=j?'none':'';if(j)drawJournal();else board(w)}
+function showB(w){const j=SUBV=='j';$('jr').style.display=j?'':'none';$('bw').style.display=j?'none':'';if(j)drawJournal();else if(SUBV=='p')pickScr();else board(w)}
 function jo(i){SEL=i;SUBV='m';showB()}
 let JF={st:'all',lg:'',gr:'d'};
 const dlab=d=>new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'}),okm=m=>m.hg!=null&&oc(m)==am(m.pr.p);
@@ -481,7 +484,7 @@ function drawJournal(){
  fin.forEach(([m])=>{const p=m.pr.p,k=oc(m);if(am(p)==k)ok++;ll-=Math.log(Math.max(p[k],1e-4));bs+=p.reduce((s,v,i)=>s+(v-(i==k?1:0))**2,0);lb-=Math.log(Math.max(F[k]/z,1e-4))});
  const rowH=([m,i])=>`<div onclick="jo(${i})" style="padding:9px 0;border-top:1px solid #245a3f;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:8px"><span class="sub">${m.date.slice(5)} · ${COMPS[m.c]||'—'}</span><b>${m.hg!=null?(okm(m)?'✓ угадан':'✗ не угадан'):'ждём матч'}</b></div>
 <p style="font:700 17px var(--hd);margin:3px 0">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg!=null?m.hg+':'+m.ag:'—'}</span> ${cr(m.a)}${esc(m.a)}</p>
-<span class="sub">Хозяева ${pc(m.pr.p[0])} · ничья ${pc(m.pr.p[1])} · гости ${pc(m.pr.p[2])}</span></div>`,
+<span class="sub">Хозяева ${pc(m.pr.p[0])} · ничья ${pc(m.pr.p[1])} · гости ${pc(m.pr.p[2])}</span>${m.up?`<div class="sub">Ты: ${O3[m.up.k]}${m.hg!=null?(m.up.k==oc(m)?' ✓':' ✗'):''} · модель: ${O3[am(m.pr.p)]}</div>`:''}</div>`,
  G=new Map(),put=(k,l,it)=>{if(!G.has(k))G.set(k,{l,a:[]});G.get(k).a.push(it)};
  rows.forEach(it=>{const m=it[0];
   if(JF.gr=='l')put(m.c||'',COMPS[m.c]||'Без лиги',it);
@@ -494,7 +497,7 @@ function drawJournal(){
  $('jr').innerHTML=`<h2>Журнал прогнозов</h2><div class="pl">${pills}</div>
 <div class="row"><select aria-label="Лига" onchange="JF.lg=this.value;drawJournal()">${opt([['','Все лиги'],...Object.entries(COMPS)],JF.lg)}</select><select aria-label="Группировка" onchange="JF.gr=this.value;drawJournal()">${opt([['d','Группировка: по дате'],['l','Группировка: по лигам'],['r','Группировка: по результату']],JF.gr)}</select></div>
 <div class="card"><div class="k"><div><b>${rows.length}</b><span>в выборке</span></div><div><b>${rows.length-n}</b><span>ждут матча</span></div><div><b>${n?ok+' из '+n:'—'}</b><span>исход угадан</span></div></div>`
- +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">Числа считаются по выбранным фильтрам. По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'
+ +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">Числа считаются по выбранным фильтрам. По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'+duel()
  +gs.map(([k,g])=>{const f=g.a.filter(([m])=>m.hg!=null),o2=f.filter(([m])=>okm(m)).length;
   return`<details class="card" style="padding:10px" open><summary><b>${g.l}</b> <span class="sub">· ${g.a.length}${f.length&&JF.gr!='r'?' · угадано '+o2+' из '+f.length:''}</span></summary>${g.a.map(rowH).join('')}</details>`}).join('')
  +(rows.length?'':all.length?'<div class="card"><p>В выборке нет прогнозов. Поменяй фильтры.</p></div>':'<div class="card"><p>Журнал пуст. Открой будущий матч во вкладке «Матчи» и нажми «Прогноз»: он попадёт сюда сам.</p></div>')}
@@ -509,7 +512,7 @@ function review(m){
  o.innerHTML=BACK+`<div class="card"><p class="sub">${m.date} · ${COMPS[m.c]||''}</p><p style="font:700 22px var(--hd);margin:4px 0 10px">${cr(m.h)}${esc(m.h)} <span style="color:var(--ac)">${m.hg}:${m.ag}</span> ${cr(m.a)}${esc(m.a)}</p>
 <p>${pk==k?'Исход угадан.':'Исход не угадан.'} Модель ждала: ${nm[pk]} (${pc(p[pk])}), на деле: ${nm[k]}, ему давали ${pc(p[k])}.</p></div>
 <div class="card sc"><table class="t"><tr><th>Что<th>Прогноз<th>Факт<th></tr>
-${rw('Исход',nm[pk]+', '+pc(p[pk]),nm[k],pk==k)}${rw('Точный счёт',top[0][0]+':'+top[0][1]+', '+(top[0][2]*100).toFixed(1)+'%',m.hg+':'+m.ag+' ('+(act*100).toFixed(1)+'%)',top[0][0]==m.hg&&top[0][1]==m.ag)}
+${rw('Исход',nm[pk]+', '+pc(p[pk]),nm[k],pk==k)}${m.up?rw('Твой выбор',O3[m.up.k],nm[k],m.up.k==k):''}${rw('Точный счёт',top[0][0]+':'+top[0][1]+', '+(top[0][2]*100).toFixed(1)+'%',m.hg+':'+m.ag+' ('+(act*100).toFixed(1)+'%)',top[0][0]==m.hg&&top[0][1]==m.ag)}
 ${rw('Обе забьют',yn(D.bt>.5)+', '+pc(D.bt),yn(by),(D.bt>.5)==by)}${rw('Тотал больше 2,5',yn(D.ov>.5)+', '+pc(D.ov),yn(tot>2)+' (всего '+tot+')',(D.ov>.5)==(tot>2))}
 ${rw('Голы хозяев','λ '+r.l[0],m.hg,null)}${rw('Голы гостей','λ '+r.l[1],m.ag,null)}${q1!=null&&q2!=null?rw('xG матча','λ '+r.l[0]+' : '+r.l[1],q1+' : '+q2,null):''}</table></div>
 <div class="card"><p>Оценка прогноза: LogLoss ${lg.toFixed(2)}, Brier ${br.toFixed(2)}. Чем меньше, тем лучше. Для сравнения, равные шансы на три исхода дают LogLoss 1,10.</p>
@@ -520,7 +523,7 @@ ${rw('Голы хозяев','λ '+r.l[0],m.hg,null)}${rw('Голы гостей
 const GHU=()=>`https://api.github.com/repos/${GH.repo}/contents/data/user.json`,GHH=a=>({Authorization:'Bearer '+GH.tk,Accept:a||'application/vnd.github+json'}),
  b64=t=>btoa(unescape(encodeURIComponent(t))),gst=t=>{$('gs').textContent=t},
  gerr=e=>e==401?'токен не подходит или истёк':e==403||e==404?'нет доступа к репозиторию: проверь имя и право Contents: Read and write':e instanceof TypeError?'нет связи':'ошибка '+e,
- gpay=()=>JSON.stringify({v:1,par:PAR,del:DELS,m:M.filter(m=>hasS(m)||m.pr||!m.fid).map(m=>m.fid?{fid:m.fid,date:m.date,h:m.h,a:m.a,s1:m.s1,s2:m.s2,pr:m.pr}:m)}),
+ gpay=()=>JSON.stringify({v:1,par:PAR,del:DELS,m:M.filter(m=>hasS(m)||m.pr||m.up||!m.fid).map(m=>m.fid?{fid:m.fid,date:m.date,h:m.h,a:m.a,s1:m.s1,s2:m.s2,pr:m.pr,up:m.up}:m)}),
  gput=b=>fetch(GHU(),{method:'PUT',headers:{...GHH(),'Content-Type':'application/json'},body:JSON.stringify({message:'Сохранение данных приложения',content:b64(b),...(GH.sha?{sha:GH.sha}:{})})});
 async function gpull(){
  if(!GH.tk||!GH.repo)return;
@@ -589,6 +592,35 @@ function drawAdv(E){
  rel=bins.map(([a,b])=>{let n=0,pm=0,h=0;r.forEach(x=>x.ps[FULL].forEach((p,i)=>{if(p>=a&&p<b){n++;pm+=p;if(x.o==i)h++}}));return n?`<tr><td>${pc(pm/n)}<td>${n}<td>${pc(h/n)}`:''}).join('');
  $('adv').innerHTML=advise(E).map(x=>`<div style="padding:8px 0;border-bottom:1px solid #245a3f"><b>${x.t}</b><div>${x.d}</div><div class="sub">Что делать: ${x.a}</div></div>`).join('')
   +(r.length>=60?`<h2 style="font-size:16px">Надёжность вероятностей</h2><table class="t"><tr><th>Модель даёт<th>Случаев<th>Сбылось</tr>${rel}</table><p class="sub">Если «сбылось» заметно ниже, чем «модель даёт», модель слишком уверена.</p>`:'')}
+
+/* ===== Директор прогнозов против модели ===== */
+const O3=['победа хозяев','ничья','победа гостей'],TAGS=['чутьё','травмы и составы','ротация','мотивация','форма','дом/гости','другое'];let PKT='';
+function pickScr(){const m=M[SEL];if(!m){SUBV='j';showB();return}
+ $('out').innerHTML=BACK+`<div class="card"><p class="sub">${m.date} · ${COMPS[m.c]||''}</p><p style="font:700 22px var(--hd);margin:4px 0 10px">${cr(m.h)}${esc(m.h)} — ${cr(m.a)}${esc(m.a)}</p>
+<p>Сначала твой выбор, потом модель. Кто выиграет?</p>
+<div class="row" style="margin:10px 0"><button class="b" onclick="pk(0)">Хозяева</button><button class="b" onclick="pk(1)">Ничья</button><button class="b" onclick="pk(2)">Гости</button></div>
+<p class="sub">Причина выбора (по желанию):</p><div class="pl">${TAGS.map(t=>`<button class="${t==PKT?'on':''}" onclick="PKT=PKT=='${t}'?'':'${t}';pickScr()">${t}</button>`).join('')}</div>
+<button class="b g" style="width:100%" onclick="pk(-1)">Пропустить и показать модель</button></div>`}
+function pk(k){const m=M[SEL];if(m&&k>=0)m.up={k,tag:PKT,at:new Date().toISOString().slice(0,10)};PKT='';SUBV='m';showB(1)}
+function trust(m){
+ const du=M.filter(x=>x.hg!=null&&x.up&&x.pr&&x!==m),tm=du.filter(x=>x.h==m.h||x.a==m.h||x.h==m.a||x.a==m.a),
+ f=(a,min)=>{if(a.length<min)return 0;let u=0,q=0;a.forEach(x=>{const k=oc(x);if(x.up.k==k)u++;if(am(x.pr.p)==k)q++});return Math.max(0,Math.min(.2,.4*(u-q)/(a.length+3)))};
+ return{w:Math.max(f(tm,5),f(du,30))}}
+function hyb(m,p){if(!m.up)return{};const t=trust(m);if(t.w<=0)return{};return{pu:p.map((v,i)=>(1-t.w)*v+(i==m.up.k?t.w:0)),w:+t.w.toFixed(3)}}
+function duel(){
+ const du=M.filter(m=>m.up&&m.pr&&m.hg!=null),wt=M.filter(m=>m.up&&m.pr&&m.hg==null).length,H='<h2 style="margin:0 0 8px">Дуэль: Директор против Модели</h2>';
+ if(!du.length&&!wt)return`<div class="card">${H}<p>Перед тем как нажать «Прогноз», выбери свой исход. Здесь появится сравнение, кто точнее: ты или модель.</p></div>`;
+ const S=a=>{let u=0,q=0,h=0,hn=0;a.forEach(m=>{const k=oc(m);if(m.up.k==k)u++;if(am(m.pr.p)==k)q++;if(m.pr.pu){hn++;if(am(m.pr.pu)==k)h++}});return{n:a.length,u,q,h,hn}},
+ T0=S(du),dis=du.filter(m=>m.up.k!=am(m.pr.p)),D=S(dis),bd=dis.filter(m=>m.up.k!=oc(m)&&am(m.pr.p)!=oc(m)).length,
+ grp=f=>{const g={};du.forEach(m=>f(m).forEach(k=>{(g[k]=g[k]||[]).push(m)}));return Object.entries(g).map(([k,a])=>[k,S(a)]).filter(([k,x])=>x.n>=2).sort((x,y)=>(y[1].u-y[1].q)-(x[1].u-x[1].q)||y[1].n-x[1].n)},
+ tb=(r,h)=>r.length?`<table class="t"><tr><th>${h}<th>Матчей<th>Ты<th>Модель</tr>${r.slice(0,8).map(([k,x])=>`<tr><td>${esc(k)}<td>${x.n}<td${x.u>x.q?' style="color:var(--ac);font-weight:700"':''}>${x.u}<td${x.q>x.u?' style="color:var(--ac);font-weight:700"':''}>${x.q}`).join('')}</table>`:'<p class="sub">Пока мало матчей.</p>',
+ tr=trust({h:'',a:''});
+ return`<div class="card">${H}<div class="k"><div><b>${T0.u} из ${T0.n}</b><span>угадал ты</span></div><div><b>${T0.q} из ${T0.n}</b><span>угадала модель</span></div><div><b>${wt}</b><span>ждут матча</span></div></div>
+<p style="margin-top:10px">Когда выборы не совпали (${D.n} матчей): прав ты в ${D.u}, модель в ${D.q}, никто в ${bd}.</p>${T0.hn?`<p>Гибрид (модель с учётом твоего выбора): ${T0.h} из ${T0.hn} матчей, где он применялся.</p>`:''}
+<details style="margin-top:8px"><summary>По командам</summary>${tb(grp(m=>[m.h,m.a]),'Команда')}</details>
+<details><summary>По причинам выбора</summary>${tb(grp(m=>m.up.tag?[m.up.tag]:[]),'Причина')}</details>
+<details><summary>По лигам</summary>${tb(grp(m=>[COMPS[m.c]||'—']),'Лига')}</details>
+<p class="sub" style="margin-top:8px">Модель начинает прислушиваться, когда по паре команд у тебя не меньше 5 общих матчей и ты в них точнее неё (или от 30 матчей в целом). Вес твоего выбора не больше 20%, а результат гибрида считается отдельно.${tr.w>0?' Общее доверие сейчас: '+pc(tr.w)+'.':''}</p></div>`}
 function go(t){TAB=t;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='teams')drawTeams();if(t=='tables')drawTables();scrollTo(0,0)}
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{go(b.dataset.t);if(b.dataset.t=='board'){SUBV='j';showB()}});
 $('sz').onchange=()=>{SZ=$('sz').value;LIM=30;list();drawTables()};$('ly').onchange=()=>board();$('tq').oninput=drawTeams;$('fk').onchange=$('fl').onchange=()=>{LIM=30;list()};$('fq').oninput=()=>{LIM=30;list()};$('syn').onclick=load;
