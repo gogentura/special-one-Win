@@ -115,12 +115,22 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 <button class="b" id="go" style="width:100%;margin-top:10px">Запустить проверку</button>
 <div id="lr" style="margin-top:12px"></div>
 </div>
+<h2>Основная формула и формула B</h2>
+<div class="card" id="bm"><p class="sub">Запусти проверку выше, и здесь появится сравнение формул.</p></div>
+<h2>Ручная калибровка</h2>
+<div class="card"><p class="sub" style="margin-bottom:8px">Подстрой прогноз вручную и проверь на истории. Применять стоит, только если выигрыш есть и на последних 30% матчей.</p>
+<label class="sl">Резкость вероятностей <b id="v1">1.00</b><input type="range" id="uct" min="0.7" max="1.4" step="0.05" value="1"></label>
+<label class="sl" style="margin-top:8px">Доля ничьих <b id="v2">+0%</b><input type="range" id="ucd" min="-10" max="30" step="5" value="0"></label>
+<label class="sl" style="margin-top:8px">Домашнее преимущество <b id="v3">+0%</b><input type="range" id="uch" min="-15" max="15" step="5" value="0"></label>
+<label class="sl" style="margin-top:8px">Масштаб голов <b id="v4">+0%</b><input type="range" id="ucs" min="-15" max="15" step="5" value="0"></label>
+<div class="row" style="margin-top:10px"><button class="b" id="uce">Проверить на истории</button><button class="b g" id="uca">Применить</button><button class="b g" id="ucr">Вернуть авто</button></div>
+<div id="uco" style="margin-top:10px"></div></div>
 <h2>Что модель советует себе</h2>
 <div class="card" id="adv"><p class="sub">Запусти проверку выше, и здесь появятся наблюдения и советы по улучшению.</p></div>
 <h2>Подбор коэффициентов</h2>
 <div class="card"><p>Модель пробует другие веса блоков на первых 70% истории и проверяет лучший вариант на последних 30%. Менять формулу или нет, решаешь ты: кнопка «Применить» запишет новую версию.</p><button class="b" id="tune" style="width:100%;margin-top:8px">Подобрать коэффициенты</button><div id="tn" style="margin-top:10px"></div></div>
 <h2>Как считает FIELD-X</h2>
-<div class="card"><pre>Версия формулы: FX-2.4
+<div class="card"><pre>Версия формулы: FX-2.5
 
 0. Сила (учится после каждого матча)
    λ_дом = exp(μ + H + атака_дом − защита_гость)
@@ -148,6 +158,14 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 
 4. Спецпоказатели: не больше ±10%
 
+B. Альтернативная формула (параллельно основной, от 10 матчей у команды)
+   признаки: xG, створ, удары, угловые, владение, пасы команды,
+   xG, створ и удары, допущенные соперником, голы за и пропущенные
+   (последние 8 матчей, свежие весомее), домашнее поле
+   веса не заданы вручную: модель учит их сама (пуассоновская регрессия)
+   смесь A+B предлагается после 500 общих матчей и только при выигрыше
+   на отложенных 30%
+
 5. Дисциплина (тест): фолы, жёлтые, красные
    только справка и теневой слой: в расчёт входит, лишь если проверка докажет пользу
 
@@ -167,6 +185,10 @@ a.x{color:var(--a);cursor:pointer;padding:4px 8px}
 </section>
 </main>
 <script>
+let MIX=null,UCAL={on:false,s:0,h:0,t:1,d:0},LASTE=null,NOB=false;
+try{MIX=JSON.parse(localStorage.getItem('fxmix')||'null')}catch(e){}
+try{const g=JSON.parse(localStorage.getItem('fxuc')||'null');if(g)UCAL={...UCAL,...g}}catch(e){}
+
 
 const PD0={BT:.3,BC:.08,BP:.04,FK:.12,SK:.05,KV:.1};let PAR={...PD0,n:0};
 try{const g=JSON.parse(localStorage.getItem('fxpar')||'null');if(g)PAR={...PAR,...g}}catch(e){}
@@ -205,7 +227,7 @@ const save=()=>{try{localStorage.setItem('fieldx',JSON.stringify(M))}catch(e){}g
 function relax(x,t){if(x.t!=null){const f=Math.exp(-Math.max(0,t-x.t)/P.T);x.a*=f;x.d*=f}x.t=t}
 const lam=(L,A,B)=>[Math.exp(L.mu+L.h+A.a-B.d),Math.exp(L.mu+B.a-A.d)],hasE=e=>e.f&&Object.keys(e.f).length>0,
  five=X=>X.E.slice(-5).reverse(),six=X=>X.E.filter(hasE).slice(-6);
-const VER='FX-2.4',BD=-.04,FULL=6,LN=['Сила','+ форма','+ угрозы','+ контроль','+ площадка','+ напор','+ спецпоказатели (полная)','+ дисциплина (тест)'],vlab=()=>VER+(PAR.n?'.'+PAR.n:''),TB={xg:.5,sot:.2,sh:.2,co:.1},TA={xg:.6,sot:.25,sh:.15},CB={pos:.5,pa:.3,ps:.2},DB={fo:.45,yc:.35,rc:.2},
+const VER='FX-2.5',BMIN=10,BD=-.04,FULL=6,LN=['Сила','+ форма','+ угрозы','+ контроль','+ площадка','+ напор','+ спецпоказатели (полная)','+ дисциплина (тест)'],vlab=()=>VER+(PAR.n?'.'+PAR.n:''),TB={xg:.5,sot:.2,sh:.2,co:.1},TA={xg:.6,sot:.25,sh:.15},CB={pos:.5,pa:.3,ps:.2},DB={fo:.45,yc:.35,rc:.2},
  ave=(X,k,s='f')=>{const v=six(X).map(e=>(e[s]||{})[k]).filter(z=>z!=null);return v.length?mean(v):null},
  dgs=X=>[['fo','фолы'],['yc','жёлтые'],['rc','красные'],['tk','отборы']].map(([k,t])=>{const v=ave(X,k);return v==null?null:t+' '+v.toFixed(1)}).filter(Boolean).join(' · ');
 function blk(L,X,Q,side){
@@ -227,6 +249,22 @@ function prs(L,X){
  let sg=Math.tanh((cs/b-G.cs/G.cn)/.2);
  if(rb>0&&G.n>=20){const m=G.s/G.n,sd=Math.sqrt(Math.max(G.q/G.n-m*m,0));if(sd>1e-6)sg=(sg+Math.tanh((rs/rb-m)/sd/2))/2}
  return[sg,E.length/(E.length+4)]}
+const BF=['xg','sot','sh','co','pos','ps'],BC=['xg','sot','sh'],
+ wav=(E,g)=>{let a=0,b=0;E.forEach((e,i)=>{const v=g(e);if(v!=null){a+=(i+1)*v;b+=i+1}});return b?a/b:null},
+ adjL=(a,b)=>UCAL.on?[a*(1+UCAL.s)*Math.exp(UCAL.h/2),b*(1+UCAL.s)/Math.exp(UCAL.h/2)]:[a,b];
+function bfe(X,Y,h){
+ const S=X.E.filter(hasE).slice(-8),Q=Y.E.filter(hasE).slice(-8),o1=S.length>=MINN,o2=Q.length>=MINN;
+ return{h,f:[...BF.map(k=>o1?wav(S,e=>(e.f||{})[k]):null),...BC.map(k=>o2?wav(Q,e=>(e.c||{})[k]):null),wav(X.E.slice(-8),e=>e.gf),wav(Y.E.slice(-8),e=>e.ga)]}}
+function fitB(R,prev){
+ const m=BF.length+BC.length+2,mu=[],sd=[];
+ for(let j=0;j<m;j++){const v=R.map(r=>r.f[j]).filter(x=>x!=null),a=v.length?mean(v):0;mu.push(a);sd.push(v.length>5?Math.sqrt(mean(v.map(x=>(x-a)**2)))||1:1)}
+ const Z=R.map(r=>[r.h,...r.f.map((x,j)=>x==null?0:(x-mu[j])/sd[j])]),y=R.map(r=>r.y),n=Z.length,w=prev&&prev.w?prev.w.slice():new Array(m+1).fill(0);
+ let b=prev?prev.b:Math.log(Math.max(mean(y),.2));
+ for(let it=0,T=prev?100:250;it<T;it++){const g=new Array(m+1).fill(0);let gb=0;
+  for(let i=0;i<n;i++){let e=b;const z=Z[i];for(let j=0;j<=m;j++)e+=w[j]*z[j];const d=Math.exp(Math.min(e,1.8))-y[i];gb+=d;for(let j=0;j<=m;j++)g[j]+=d*z[j]}
+  b-=.1*gb/n;for(let j=0;j<=m;j++)w[j]-=.1*(g[j]/n+.05*w[j])}
+ return{mu,sd,w,b}}
+function prB(B,fe){let e=B.b+B.w[0]*fe.h;fe.f.forEach((x,j)=>{if(x!=null)e+=B.w[j+1]*(x-B.mu[j])/B.sd[j]});return Math.exp(cl(e,-2,1.6))}
 function spec(L,X){
  const e=five(X),E=six(X),o=[],lg=k=>L.g[k]&&L.g[k].s>0?L.g[k].s/L.g[k].n:null,
  av=(k,s)=>{const v=E.map(x=>(x[s]||{})[k]).filter(z=>z!=null);return v.length>=3?mean(v):null},
@@ -262,9 +300,10 @@ function lay(L,A,B){
   pA=spec(L,A),pB=spec(L,B),sm=(p,t)=>p.reduce((s,x)=>s+(x.kind==t&&x.s!=null?x.s:0),0),
   z1=k1*Math.exp(cl(PAR.SK*(sm(pA,'att')-sm(pB,'def')),-.1,.1)),z2=k2*Math.exp(cl(PAR.SK*(sm(pB,'att')-sm(pA,'def')),-.1,.1)),
   v1=z1*Math.exp(cl(BD*rA*sA,-.1,.1)),v2=z2*Math.exp(cl(BD*rB*sB,-.1,.1));
- return{l:[[l1,l2],[x1,x2],[y1,y2],[w1,w2],[u1,u2],[k1,k2],[z1,z2],[v1,v2]],om:(nA+nB+mA+mB)/4,sp:[pA,pB],fm:[e1,e2],bk:[{t:tA,c:kA,n:nA,p:jA,pn:iA},{t:tB,c:kB,n:nB,p:jB,pn:iB}]}}
-function run(ms,cb){
+ return{l:[[l1,l2],[x1,x2],[y1,y2],[w1,w2],[u1,u2],[k1,k2],[z1,z2],[v1,v2]],om:(nA+nB+mA+mB)/4,b:L.B&&A.E.length>=BMIN&&B.E.length>=BMIN?[prB(L.B,bfe(A,B,1)),prB(L.B,bfe(B,A,0))]:null,sp:[pA,pB],fm:[e1,e2],bk:[{t:tA,c:kA,n:nA,p:jA,pn:iA},{t:tB,c:kB,n:nB,p:jB,pn:iB}]}}
+function run(ms,cb,nb){nb=nb||NOB;
  const L={mu:Math.log(1.35),h:.2,g:{},pr:{s:0,q:0,n:0,cs:0,cn:0}},T={},g=n=>T[n]||(T[n]={a:0,d:0,n:0,t:null,E:[]});
+ const RW=[];let LF=0;
  ms.filter(m=>m.hg!=null).sort(byD).forEach(m=>{
   const A=g(m.h),B=g(m.a),t=day(m.date);relax(A,t);relax(B,t);
   const y=lay(L,A,B);if(cb)cb(m,y,A,B);
@@ -272,9 +311,11 @@ function run(ms,cb){
    [l1,l2]=y.l[0],eh=yh-l1,ea=ya-l2,st=(e,q)=>cl(P.eta*(1+2.5/(1+q.n/3))*e,-.3,.3);
   A.a+=st(eh,A);B.d-=st(eh,B);B.a+=st(ea,B);A.d-=st(ea,A);
   L.h=cl(L.h+.01*eh,0,.5);L.mu+=.008*(eh+ea)/2;A.n++;B.n++;
+  if(!nb&&A.E.length>=MINN&&B.E.length>=MINN){RW.push({...bfe(A,B,1),y:m.hg},{...bfe(B,A,0),y:m.ag});if(cb&&RW.length>=120&&RW.length-LF>=60){L.B=fitB(RW,L.B);LF=RW.length}}
   A.E.push({m,d:m.date,o:m.a,hm:1,gf:m.hg,ga:m.ag,res:eh,rc:ea,f:m.s1,c:m.s2});
   B.E.push({m,d:m.date,o:m.h,hm:0,gf:m.ag,ga:m.hg,res:ea,rc:eh,f:m.s2,c:m.s1});
   KS.forEach(([k])=>[m.s1,m.s2].forEach(o=>{const v=o&&o[k];if(v!=null){const G=L.g[k]||(L.g[k]={s:0,n:0,q:0});G.s+=v;G.n++;G.q+=v*v}}));[[m.s1,m.s2,m.hg,m.ag],[m.s2,m.s1,m.ag,m.hg]].forEach(([f,c,gf,ga])=>{const x=pre(f,c,gf,ga);if(x){L.pr.cn++;L.pr.cs+=x.c;if(x.r!=null){L.pr.n++;L.pr.s+=x.r;L.pr.q+=x.r*x.r}}})});
+ if(!nb&&RW.length>=120&&RW.length>LF)L.B=fitB(RW,L.B);
  return{L,T}}
 const TG=[],TW=[];(()=>{let z=0;for(let i=1;i<=30;i++){const t=i/10,w=t**5*Math.exp(-6*t);TG.push(t);TW.push(w);z+=w}TW.forEach((w,i)=>TW[i]=w/z)})();
 const pm=m=>{const r=[Math.exp(-m)];for(let i=1;i<11;i++)r.push(r[i-1]*m/i);return r};
@@ -333,9 +374,9 @@ function board(w){
  if(!m){SUBV='j';showB();return}
  if(m.hg!=null){review(m);return}
  const{L,T}=run(M),bl=n=>T[n]||{a:0,d:0,n:0,t:null,E:[]},A=bl(m.h),B=bl(m.a),t=day(m.date);relax(A,t);relax(B,t);
- const y=lay(L,A,B),md=$('ly').value,Cg=md=='auto'?calib():null,C=Cg&&Cg.lg&&Cg.lg[m.c]?{...Cg,on:true,t:Cg.lg[m.c].t,d:Cg.lg[m.c].d}:Cg,ly=C?C.l:+md,[lh,la]=y.l[ly],d0=dist(lh,la),d=C&&C.on?calD(d0,C):d0,p=d.p,top=[];
+ const y=lay(L,A,B),md=$('ly').value,Cg=md=='auto'?calib():null,C=UCAL.on&&Cg?{...Cg,on:true,t:UCAL.t,d:UCAL.d}:Cg&&Cg.lg&&Cg.lg[m.c]?{...Cg,on:true,t:Cg.lg[m.c].t,d:Cg.lg[m.c].d}:Cg,ly=C?C.l:+md,[lh0,la0]=y.l[ly],[lh,la]=adjL(lh0,la0),d0=dist(lh,la),dB=y.b?dist(y.b[0],y.b[1]):null,mixed=md=='auto'&&MIX&&MIX.w>0&&dB,d=mixed?mixD(d0,dB,MIX.w):C&&C.on?calD(d0,C):d0,p=d.p,top=[];
  const hb=hyb(m,p);
- if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10),v:vlab(),par:{...PAR,BD,w:P.w},cal:C?{on:C.on,t:C.t,d:C.d}:null,...hb};save();list()}
+ if(w&&m.hg==null){m.pr={p,l:[+lh.toFixed(2),+la.toFixed(2)],ly,at:new Date().toISOString().slice(0,10),v:vlab(),par:{...PAR,BD,w:P.w},cal:C?{on:C.on,t:C.t,d:C.d}:null,...hb,pa:d0.p,...(dB?{pb:dB.p,lb:y.b.map(v=>+v.toFixed(2))}:{}),mw:mixed?MIX.w:0};save();list()}
  for(let i=0;i<11;i++)for(let j=0;j<11;j++)top.push([i,j,d.m[i*11+j]]);top.sort((a,b)=>b[2]-a[2]);
  const ltr=x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П',nm=LN,nx=[A,B].map(X=>X.E.filter(e=>e.f&&e.f.xg!=null).length),mt=C?(C.on?`авто: слой «${nm[ly]}», калибровка включена${Cg&&Cg.lg&&Cg.lg[m.c]?' (по лиге)':''}`:'авто: полная формула, калибровка пока выключена'):'слой выбран вручную',
  col=(X,n,i)=>{const sp=y.sp[i],cp=comp(sp);
@@ -347,10 +388,10 @@ function board(w){
 <div class="card"><div class="pb"><div style="width:${p[0]*100}%;background:var(--h)">${pc(p[0])}</div><div style="width:${p[1]*100}%;background:#d9e2dc">${pc(p[1])}</div><div style="width:${p[2]*100}%;background:var(--a)">${pc(p[2])}</div></div>
 <p class="sub" style="display:flex;justify-content:space-between;margin-top:4px"><span>победа: ${esc(m.h)}</span><span>ничья</span><span>победа: ${esc(m.a)}</span></p></div>
 ${m.up?`<div class="card"><p>Твой выбор: <b>${O3[m.up.k]}</b>${m.up.tag?' ('+esc(m.up.tag)+')':''}. Модель: <b>${O3[am(p)]}</b>, ${pc(Math.max(...p))}.</p>${hb.w?`<p class="sub" style="margin-top:6px">Модель прислушалась к тебе: по этим командам ты точнее неё. Вес твоего выбора ${pc(hb.w)}. С учётом выбора: хозяева ${pc(hb.pu[0])} · ничья ${pc(hb.pu[1])} · гости ${pc(hb.pu[2])}.</p>`:'<p class="sub" style="margin-top:6px">Прогноз модели не меняется. Чтобы она прислушалась, по этим командам нужно не меньше 5 общих матчей, где ты точнее неё.</p>'}</div>`:''}
-<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>доверие к статистике${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}. Матчей с xG: ${esc(m.h)} ${nx[0]}, ${esc(m.a)} ${nx[1]}${nx[0]<MINN||nx[1]<MINN?'. Пока основа прогноза идёт по голам, статистика подключается с '+MINN+' матчей':''}. Формула ${VER}.</p></div>
+<div class="card"><div class="k"><div><b>${lh.toFixed(2)}</b><span>λ хозяев</span></div><div><b>${la.toFixed(2)}</b><span>λ гостей</span></div><div><b>${pc(d.bt)}</b><span>обе забьют</span></div><div><b>${pc(d.ov)}</b><span>тотал больше 2,5</span></div><div><b>${y.om?pc(y.om):'—'}</b><span>доверие к статистике${y.om?'':' (копится)'}</span></div></div><p class="sub" style="margin-top:8px">Режим: ${mt}${UCAL.on?' (ручная калибровка)':''}${mixed?'; смесь A+B, вес B '+pc(MIX.w):''}. Матчей с xG: ${esc(m.h)} ${nx[0]}, ${esc(m.a)} ${nx[1]}${nx[0]<MINN||nx[1]<MINN?'. Пока основа прогноза идёт по голам, статистика подключается с '+MINN+' матчей':''}. Формула ${VER}.</p></div>
 <div>${top.slice(0,6).map(c=>`<span class="ch">${c[0]}:${c[1]}<i>${(c[2]*100).toFixed(1)}%</i></span>`).join('')}</div>
 <h2>Как менялась λ по слоям</h2><div class="card"><table class="t"><tr><th>Слой<th>Хозяева<th>Гости</tr>${y.l.map((l,i)=>`<tr${i==ly?' style="color:var(--ac);font-weight:600"':''}><td>${nm[i]}<td>${l[0].toFixed(2)}<td>${l[1].toFixed(2)}`).join('')}</table></div>
-${charts(A,B,m)}${col(A,m.h,0)}${col(B,m.a,1)}
+${bcard(y,d0,dB)}${charts(A,B,m)}${col(A,m.h,0)}${col(B,m.a,1)}
 ${m.pr&&m.hg==null?'<p class="sub">Прогноз записан в карточку матча. После игры счёт подставится при обновлении результатов, останется добавить статистику.</p>':''}
 <p class="sub">Это вероятности, а не обещание счёта. Полезность каждого слоя проверяется на вкладке «Проверка».</p>
 <div class="row" style="margin-top:10px">${m.pr?'<button class="b g" onclick="board(1)">Обновить записанный прогноз</button><button class="b g" onclick="delP()">Убрать записанный прогноз</button>':''}<button class="b g" style="color:var(--a)" onclick="delM(${SEL})">Удалить матч из базы</button></div>`}
@@ -382,7 +423,7 @@ function evalAll(){
  const R=Array.from({length:LN.length+1},()=>[0,0]),c=[0,0,0],rec=[];let n=0,tot=0,ns=0,lv=null,lp=null;
  run(M,(m,y,A,B)=>{tot++;const o=oc(m);
   if(tot>20&&A.n>=2&&B.n>=2){const ps=y.l.map(l=>{if(lv&&lv[0]==l[0]&&lv[1]==l[1])return lp;lv=l;return lp=dist(l[0],l[1]).p});
-   [c.map(v=>(v+1)/(tot+2)),...ps].forEach((p,i)=>{const s=sc(p,o);R[i][0]+=s[0];R[i][1]+=s[1]});rec.push({o,ps,c:m.c});n++;if(y.om)ns++}
+   [c.map(v=>(v+1)/(tot+2)),...ps].forEach((p,i)=>{const s=sc(p,o);R[i][0]+=s[0];R[i][1]+=s[1]});rec.push({o,ps,c:m.c,lam:y.l[FULL],pb:y.b?dist(y.b[0],y.b[1]).p:null});n++;if(y.om)ns++}
   c[o]++});
  return{R,n,ns,rec}}
 const adj=(p,t,d)=>{const q=p.map(v=>Math.pow(Math.max(v,1e-6),t));q[1]*=1+d;const z=q[0]+q[1]+q[2];return q.map(v=>v/z)},
@@ -408,7 +449,7 @@ function lab(){
  const E=evalAll(),{R,n,ns}=E;
  if(!n){$('lr').innerHTML='<p>Нужно минимум 25–30 сыгранных матчей.</p>';return}
  CAL=null;const C=calib(E),nm=['Частоты лиги (база)',...LN],bi=R.reduce((b,r,i)=>r[1]<R[b][1]?i:b,0),best=k=>Math.min(...R.map(r=>r[k]));
- drawAdv(E);$('lr').innerHTML=`<table class="t"><tr><th>Модель<th>Brier<th>LogLoss</tr>${R.map((r,i)=>`<tr><td>${nm[i]}${[0,1].map(k=>`<td${r[k]==best(k)?' style="color:var(--ac);font-weight:700"':''}>${(r[k]/n).toFixed(3)}`).join('')}`).join('')}</table>
+ drawAdv(E);LASTE=E;drawBmix(E);$('lr').innerHTML=`<table class="t"><tr><th>Модель<th>Brier<th>LogLoss</tr>${R.map((r,i)=>`<tr><td>${nm[i]}${[0,1].map(k=>`<td${r[k]==best(k)?' style="color:var(--ac);font-weight:700"':''}>${(r[k]/n).toFixed(3)}`).join('')}`).join('')}</table>
 <p style="margin-top:10px">Проверено матчей: ${n}. Лучший по LogLoss: «${nm[bi]}». Статистика участвовала в ${ns} матчах. Меньше значение — лучше. Слой, который не улучшает оба числа, стоит оставлять выключенным.</p>
 <p style="margin-top:6px"><b>Самонастройка:</b> ${C.on?`включена. Слой «${nm[C.l+1]}», резкость ${C.t}, поправка ничьих ${C.d>=0?'+':''}${Math.round(C.d*100)}%. Выигрыш подтверждён на ${C.pos} из 3 отрезков, средний выигрыш LogLoss ${C.gm.toFixed(3)}.`:C.gm!=null?`выключена: улучшение не подтвердилось (средний выигрыш ${C.gm.toFixed(3)}, отрезков с выигрышем ${C.pos} из 3). Работает полная формула.`:'выключена: нужно минимум 90 проверенных матчей.'}</p>
 <p style="margin-top:6px"><b>По лигам:</b> ${Object.keys(C.lg||{}).map(c=>COMPS[c]+' (резкость '+C.lg[c].t+', ничьи '+(C.lg[c].d>=0?'+':'')+Math.round(C.lg[c].d*100)+'%)').join('; ')||'отдельной калибровки пока нет, нужно от 90 проверенных матчей в лиге и подтверждённый выигрыш'}.</p>
@@ -497,7 +538,7 @@ function drawJournal(){
  $('jr').innerHTML=`<h2>Журнал прогнозов</h2><div class="pl">${pills}</div>
 <div class="row"><select aria-label="Лига" onchange="JF.lg=this.value;drawJournal()">${opt([['','Все лиги'],...Object.entries(COMPS)],JF.lg)}</select><select aria-label="Группировка" onchange="JF.gr=this.value;drawJournal()">${opt([['d','Группировка: по дате'],['l','Группировка: по лигам'],['r','Группировка: по результату']],JF.gr)}</select></div>
 <div class="card"><div class="k"><div><b>${rows.length}</b><span>в выборке</span></div><div><b>${rows.length-n}</b><span>ждут матча</span></div><div><b>${n?ok+' из '+n:'—'}</b><span>исход угадан</span></div></div>`
- +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">Числа считаются по выбранным фильтрам. По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'+duel()
+ +(n?`<p style="margin-top:10px">Угадано исходов: ${pc(ok/n)}. LogLoss ${(ll/n).toFixed(3)}, у простой базы по частотам лиги ${(lb/n).toFixed(3)}. Brier ${(bs/n).toFixed(3)}. Меньше значение — лучше.</p><p class="sub" style="margin-top:6px">Числа считаются по выбранным фильтрам. По нескольким матчам выводов делать рано: судить можно примерно от 50–100 прогнозов.</p>`:'<p class="sub" style="margin-top:10px">Разбор появится после первых сыгранных матчей с прогнозом.</p>')+'</div>'+duel()+bcmp()
  +gs.map(([k,g])=>{const f=g.a.filter(([m])=>m.hg!=null),o2=f.filter(([m])=>okm(m)).length;
   return`<details class="card" style="padding:10px" open><summary><b>${g.l}</b> <span class="sub">· ${g.a.length}${f.length&&JF.gr!='r'?' · угадано '+o2+' из '+f.length:''}</span></summary>${g.a.map(rowH).join('')}</details>`}).join('')
  +(rows.length?'':all.length?'<div class="card"><p>В выборке нет прогнозов. Поменяй фильтры.</p></div>':'<div class="card"><p>Журнал пуст. Открой будущий матч во вкладке «Матчи» и нажми «Прогноз»: он попадёт сюда сам.</p></div>')}
@@ -514,7 +555,7 @@ function review(m){
 <div class="card sc"><table class="t"><tr><th>Что<th>Прогноз<th>Факт<th></tr>
 ${rw('Исход',nm[pk]+', '+pc(p[pk]),nm[k],pk==k)}${m.up?rw('Твой выбор',O3[m.up.k],nm[k],m.up.k==k):''}${rw('Точный счёт',top[0][0]+':'+top[0][1]+', '+(top[0][2]*100).toFixed(1)+'%',m.hg+':'+m.ag+' ('+(act*100).toFixed(1)+'%)',top[0][0]==m.hg&&top[0][1]==m.ag)}
 ${rw('Обе забьют',yn(D.bt>.5)+', '+pc(D.bt),yn(by),(D.bt>.5)==by)}${rw('Тотал больше 2,5',yn(D.ov>.5)+', '+pc(D.ov),yn(tot>2)+' (всего '+tot+')',(D.ov>.5)==(tot>2))}
-${rw('Голы хозяев','λ '+r.l[0],m.hg,null)}${rw('Голы гостей','λ '+r.l[1],m.ag,null)}${q1!=null&&q2!=null?rw('xG матча','λ '+r.l[0]+' : '+r.l[1],q1+' : '+q2,null):''}</table></div>
+${rw('Голы хозяев','λ '+r.l[0],m.hg,null)}${rw('Голы гостей','λ '+r.l[1],m.ag,null)}${q1!=null&&q2!=null?rw('xG матча','λ '+r.l[0]+' : '+r.l[1],q1+' : '+q2,null):''}</table></div>${r.pb?`<div class="card"><p>Формула B ждала: хозяева ${pc(r.pb[0])} · ничья ${pc(r.pb[1])} · гости ${pc(r.pb[2])}. ${am(r.pb)==k?'Исход угадан ✓':'Исход не угадан ✗'}${r.pa?'. Основная (A): '+(am(r.pa)==k?'угадала ✓':'не угадала ✗'):''}.</p></div>`:''}
 <div class="card"><p>Оценка прогноза: LogLoss ${lg.toFixed(2)}, Brier ${br.toFixed(2)}. Чем меньше, тем лучше. Для сравнения, равные шансы на три исхода дают LogLoss 1,10.</p>
 <p class="sub" style="margin-top:6px">Прогноз записан ${r.at||'—'}, формула ${r.v||'—'}. Счёт и вероятности для разбора восстановлены по записанным λ, поэтому проценты точного счёта приблизительные.</p>
 <button class="b g" style="width:100%;margin-top:10px" onclick="delP()">Убрать прогноз из журнала</button></div>`}
@@ -523,7 +564,7 @@ ${rw('Голы хозяев','λ '+r.l[0],m.hg,null)}${rw('Голы гостей
 const GHU=()=>`https://api.github.com/repos/${GH.repo}/contents/data/user.json`,GHH=a=>({Authorization:'Bearer '+GH.tk,Accept:a||'application/vnd.github+json'}),
  b64=t=>btoa(unescape(encodeURIComponent(t))),gst=t=>{$('gs').textContent=t},
  gerr=e=>e==401?'токен не подходит или истёк':e==403||e==404?'нет доступа к репозиторию: проверь имя и право Contents: Read and write':e instanceof TypeError?'нет связи':'ошибка '+e,
- gpay=()=>JSON.stringify({v:1,par:PAR,del:DELS,m:M.filter(m=>hasS(m)||m.pr||m.up||!m.fid).map(m=>m.fid?{fid:m.fid,date:m.date,h:m.h,a:m.a,s1:m.s1,s2:m.s2,pr:m.pr,up:m.up}:m)}),
+ gpay=()=>JSON.stringify({v:1,par:PAR,mix:MIX,uc:UCAL,del:DELS,m:M.filter(m=>hasS(m)||m.pr||m.up||!m.fid).map(m=>m.fid?{fid:m.fid,date:m.date,h:m.h,a:m.a,s1:m.s1,s2:m.s2,pr:m.pr,up:m.up}:m)}),
  gput=b=>fetch(GHU(),{method:'PUT',headers:{...GHH(),'Content-Type':'application/json'},body:JSON.stringify({message:'Сохранение данных приложения',content:b64(b),...(GH.sha?{sha:GH.sha}:{})})});
 async function gpull(){
  if(!GH.tk||!GH.repo)return;
@@ -531,7 +572,7 @@ async function gpull(){
   if(r.status==404){GH.ready=true;GH.sha=null;gst('Автосохранение включено. Файла в репозитории ещё нет, он создастся при первом сохранении.');gsched(1);return}
   if(!r.ok)throw r.status;GH.sha=(await r.json()).sha;
   const t=await(await fetch(GHU(),{headers:GHH('application/vnd.github.raw+json')})).text(),d=JSON.parse(t);
-  DELS=[...new Set([...DELS,...(d.del||[])])];(d.m||[]).forEach(x=>add(x));if(d.par&&d.par.n>0&&!(PAR.n>0)){PAR={...PAR,...d.par};try{localStorage.setItem('fxpar',JSON.stringify(PAR))}catch(e){}CAL=null}LASTH=t;GH.ready=true;refresh();
+  DELS=[...new Set([...DELS,...(d.del||[])])];(d.m||[]).forEach(x=>add(x));if(d.par&&d.par.n>0&&!(PAR.n>0)){PAR={...PAR,...d.par};try{localStorage.setItem('fxpar',JSON.stringify(PAR))}catch(e){}CAL=null}if(d.mix&&!MIX){MIX=d.mix;try{localStorage.setItem('fxmix',JSON.stringify(MIX))}catch(e){}}if(d.uc&&d.uc.on&&!UCAL.on){UCAL=d.uc;try{localStorage.setItem('fxuc',JSON.stringify(UCAL))}catch(e){}}LASTH=t;GH.ready=true;refresh();
   gst(`Автосохранение включено. Из репозитория загружено записей: ${(d.m||[]).length}.`);gsched(1)}
  catch(e){gst('Автосохранение не подключилось: '+gerr(e)+'. Данные остаются в браузере.')}}
 function gsched(now){if(!GH.tk||!GH.repo||!GH.ready)return;clearTimeout(GT);GT=setTimeout(gpush,now?500:6000)}
@@ -553,8 +594,8 @@ const W8=[8,7,6,5,4,3,2,1],PK=['BT','BC','BP','FK','SK','KV'],PN={BT:'угроз
   return e.length?e.map(x=>x.gf>x.ga?'В':x.gf==x.ga?'Н':'П').join('')+' · без поражений подряд: '+u:'матчей нет'};
 function fitTD(rec,l){let b={t:1,d:0,v:ll(rec,l,1,0)};for(const t of[.8,.9,1,1.1,1.2,1.3])for(const d of[-.1,0,.1,.2,.3]){const v=ll(rec,l,t,d);if(v<b.v-1e-9)b={t,d,v}}return b}
 function evalP(par){
- const keep=PAR;PAR={...par};let tot=0;const out=[];
- try{run(M,(m,y,A,B)=>{tot++;if(tot>20&&A.n>=2&&B.n>=2){const l=y.l[FULL];out.push(-Math.log(Math.max(dist(l[0],l[1]).p[oc(m)],1e-4)))}})}finally{PAR=keep}
+ const keep=PAR;PAR={...par};NOB=true;let tot=0;const out=[];
+ try{run(M,(m,y,A,B)=>{tot++;if(tot>20&&A.n>=2&&B.n>=2){const l=y.l[FULL];out.push(-Math.log(Math.max(dist(l[0],l[1]).p[oc(m)],1e-4)))}})}finally{PAR=keep;NOB=false}
  const k=Math.floor(out.length*.7);return{a:mean(out.slice(0,k)),b:mean(out.slice(k)),n:out.length}}
 let TP=null;
 async function tune(){
@@ -621,6 +662,41 @@ function duel(){
 <details><summary>По причинам выбора</summary>${tb(grp(m=>m.up.tag?[m.up.tag]:[]),'Причина')}</details>
 <details><summary>По лигам</summary>${tb(grp(m=>[COMPS[m.c]||'—']),'Лига')}</details>
 <p class="sub" style="margin-top:8px">Модель начинает прислушиваться, когда по паре команд у тебя не меньше 5 общих матчей и ты в них точнее неё (или от 30 матчей в целом). Вес твоего выбора не больше 20%, а результат гибрида считается отдельно.${tr.w>0?' Общее доверие сейчас: '+pc(tr.w)+'.':''}</p></div>`}
+
+/* ===== формула B, смесь, ручная калибровка ===== */
+const mixD=(a,b,w)=>{let bt=0,ov=0;const D=a.m.map((v,k)=>{const x=(1-w)*v+w*b.m[k],i=Math.floor(k/11),j=k%11;if(i&&j)bt+=x;if(i+j>2)ov+=x;return x});return{m:D,p:a.p.map((v,i)=>(1-w)*v+w*b.p[i]),bt,ov}};
+function bcard(y,dA,dB){
+ return'<h2>Две формулы</h2><div class="card">'+(dB?`<table class="t"><tr><th><th>λ<th>1<th>X<th>2</tr><tr><td>Основная (A)<td>${y.l[FULL].map(v=>v.toFixed(2)).join(':')}<td>${dA.p.map(pc).join('<td>')}</tr><tr><td>Альтернативная (B)<td>${y.b.map(v=>v.toFixed(2)).join(':')}<td>${dB.p.map(pc).join('<td>')}</tr></table><p class="sub" style="margin-top:6px">Формула B сама учится на всей вашей статистике (xG, удары, створ, угловые, владение, пасы) и считает голы по последним 8 матчам. Она идёт параллельно, а решение о смеси принимается во вкладке «Модель».</p>`:`<p>Формула B включается, когда у обеих команд не меньше ${BMIN} матчей и в базе набралось достаточно данных для обучения (от 60 матчей).</p>`)+'</div>'}
+function bcmp(){
+ const a=M.filter(m=>m.pr&&m.pr.pb&&m.hg!=null);if(!a.length)return'';
+ const S=g=>{let h=0,l=0;a.forEach(m=>{const k=oc(m),p=g(m);if(am(p)==k)h++;l-=Math.log(Math.max(p[k],1e-4))});return[h,l/a.length]},
+ A=S(m=>m.pr.pa||m.pr.p),B=S(m=>m.pr.pb),X=a.some(m=>m.pr.mw>0)?S(m=>m.pr.p):null,f=r=>`${r[0]} из ${a.length}, LogLoss ${r[1].toFixed(3)}`;
+ return`<div class="card"><h2 style="margin:0 0 8px">Основная формула против B</h2><p>Основная: ${f(A)}</p><p>Альтернативная B: ${f(B)}</p>${X?`<p>Смесь: ${f(X)}</p>`:''}<p class="sub" style="margin-top:6px">Считается по прогнозам, записанным до матчей, где работали обе формулы.</p></div>`}
+function bmix(E){
+ const r=E.rec.filter(x=>x.pb),n=r.length,mx=(x,w)=>x.ps[FULL].map((v,i)=>(1-w)*v+w*x.pb[i]),ls=(a,w)=>a.length?mean(a.map(x=>-Math.log(Math.max(mx(x,w)[x.o],1e-4)))):0;
+ if(n<30)return{n};
+ const ws=[0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1],best=a=>ws.reduce((b,w)=>ls(a,w)<ls(a,b)-1e-9?w:b,0),k=Math.floor(n*.7),ho=r.slice(k),wt=best(r.slice(0,k)),wa=best(r);
+ return{n,A:ls(r,0),B:ls(r,1),w:wa,M:ls(r,wa),hoA:ls(ho,0),hoB:ls(ho,1),hoM:ls(ho,wt),wt,ok:n>=500&&wt>0&&ls(ho,0)-ls(ho,wt)>.002}}
+function drawBmix(E){
+ const r=bmix(E),f=v=>v.toFixed(3);
+ $('bm').innerHTML=r.n<30?`<p>Пока мало данных: матчей, где работали обе формулы, ${r.n}. Формула B включается у команд с ${BMIN} и больше матчами.</p>`
+ :`<table class="t"><tr><th>Формула<th>Вся история<th>Последние 30%</tr><tr><td>Основная (A)<td>${f(r.A)}<td>${f(r.hoA)}</tr><tr><td>Альтернативная (B)<td>${f(r.B)}<td>${f(r.hoB)}</tr><tr><td>Лучшая смесь (вес B ${r.w})<td>${f(r.M)}<td>${f(r.hoM)}</tr></table>
+<p style="margin-top:8px">LogLoss, меньше лучше. Матчей в сравнении: ${r.n} из 500 нужных для решения.</p>
+<p><b>${r.n<500?'Пока это наблюдение. Смесь можно принять, когда наберётся 500 матчей.':r.ok?'Смесь улучшает прогноз и на отложенных матчах, вес B '+r.wt+'.':'Подтверждённого выигрыша у смеси нет, остаётся основная формула.'}</b></p>`
+ +(r.ok?`<button class="b" style="width:100%;margin-top:8px" onclick="applyMix(${r.wt})">Включить смесь A+B</button>`:'')
+ +(MIX&&MIX.w>0?`<button class="b g" style="width:100%;margin-top:8px" onclick="resetMix()">Выключить смесь (сейчас вес B ${MIX.w})</button>`:'')}
+function applyMix(w){MIX={w};try{localStorage.setItem('fxmix',JSON.stringify(MIX))}catch(e){}save();$('bm').innerHTML+='<p>Смесь включена: новые прогнозы считаются как смесь A и B.</p>'}
+function resetMix(){MIX=null;try{localStorage.removeItem('fxmix')}catch(e){}save();$('bm').innerHTML+='<p>Смесь выключена.</p>'}
+const ucv=()=>({t:+$('uct').value,d:+$('ucd').value/100,h:+$('uch').value/100,s:+$('ucs').value/100}),pcs=v=>(v>=0?'+':'')+Math.round(v*100)+'%';
+function ucLab(){const u=ucv();$('v1').textContent=u.t.toFixed(2);$('v2').textContent=pcs(u.d);$('v3').textContent=pcs(u.h);$('v4').textContent=pcs(u.s)}
+const ucLL=(u,rec)=>rec.map(x=>{const e=Math.exp(u.h/2),p=adj(dist(x.lam[0]*(1+u.s)*e,x.lam[1]*(1+u.s)/e).p,u.t,u.d);return -Math.log(Math.max(p[x.o],1e-4))});
+function ucRun(){
+ $('uco').textContent='Считаю…';
+ setTimeout(()=>{const E=LASTE||(LASTE=evalAll()),r=E.rec;if(r.length<30){$('uco').textContent='Нужно минимум 30 проверенных матчей.';return}
+  const u=ucv(),b0={t:CAL&&CAL.on?CAL.t:1,d:CAL&&CAL.on?CAL.d:0,h:0,s:0},k=Math.floor(r.length*.7),a=ucLL(b0,r),b=ucLL(u,r),f=v=>v.toFixed(3);
+  $('uco').innerHTML=`<table class="t"><tr><th><th>Сейчас<th>С твоей настройкой</tr><tr><td>Вся история<td>${f(mean(a))}<td>${f(mean(b))}</tr><tr><td>Последние 30%<td>${f(mean(a.slice(k)))}<td>${f(mean(b.slice(k)))}</tr></table><p class="sub" style="margin-top:6px">LogLoss, меньше лучше. Если выигрыш виден только на всей истории, а на последних 30% его нет, это подгонка.</p>`},20)}
+function ucApply(){UCAL={on:true,...ucv()};try{localStorage.setItem('fxuc',JSON.stringify(UCAL))}catch(e){}save();$('uco').innerHTML+='<p>Ручная калибровка включена для новых прогнозов.</p>'}
+function ucReset(){UCAL={on:false,s:0,h:0,t:1,d:0};try{localStorage.removeItem('fxuc')}catch(e){}save();$('uco').textContent='Вернулась автоматическая калибровка.'}
 function go(t){TAB=t;document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id==t));document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.t==t));if(t=='teams')drawTeams();if(t=='tables')drawTables();scrollTo(0,0)}
 document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{go(b.dataset.t);if(b.dataset.t=='board'){SUBV='j';showB()}});
 $('sz').onchange=()=>{SZ=$('sz').value;LIM=30;list();drawTables()};$('ly').onchange=()=>board();$('tq').oninput=drawTeams;$('fk').onchange=$('fl').onchange=()=>{LIM=30;list()};$('fq').oninput=()=>{LIM=30;list()};$('syn').onclick=load;
@@ -646,6 +722,6 @@ $('ghon').onclick=()=>{const tk=$('ght').value.trim(),rp=$('ghr').value.trim();
 $('ghnow').onclick=()=>{if(!GH.tk)return gst('Сначала включи автосохранение.');if(GH.ready){LASTH='';gsched(1)}else gpull()};
 $('ghoff').onclick=()=>{GH={tk:'',repo:GH.repo,ready:false,sha:null,busy:false};try{localStorage.removeItem('fxgh')}catch(e){}gst('Автосохранение выключено, токен удалён из браузера.')};
 $('ly').innerHTML='<option value="auto" selected>Слои: авто (самонастройка)</option>'+[FULL,...LN.map((_,i)=>i).filter(i=>i!=FULL)].map(i=>`<option value="${i}">Слои: ${i==FULL?'полная формула':LN[i]}</option>`).join('');
-$('tune').onclick=tune;
+$('tune').onclick=tune;$('uce').onclick=ucRun;$('uca').onclick=ucApply;$('ucr').onclick=ucReset;['uct','ucd','uch','ucs'].forEach(id=>$(id).oninput=ucLab);ucLab();
 refresh();load().then(gpull);
 </script></body></html>
